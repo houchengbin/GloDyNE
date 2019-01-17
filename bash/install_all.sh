@@ -3,5 +3,4 @@
 
 python -m pip install --upgrade pip
 
-pip install gensim==3.6.0
-pip install networkx==2.2
+pip install gensim==3.6.0 networkx==2.2 scikit-learn==0.20.2 matplotlib==3.0.2
