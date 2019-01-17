@@ -2,25 +2,30 @@
 Dynamic Word2Vec example to address the following questions
 by Chengbin Hou
 
+comments: gensim word2vec cannot take pairs as input, we switch to tensorflow word2vec...
+
 # basic useage of Gemsim Word2Vec: given sentences -> train embedding [done]
 
 # how to update for unseen words [done]
 # how to continue traning on seen + unseen words [done]
-# check if updated embedding and similarity are changed? [yes]
-# how Gensim Word2Vec update embedding [done]
+# check if updated embedding and similarity are changed? [done, yes]
+# how Gensim Word2Vec update embedding [done, see source code]
 
 # how to reset input embedding matrix [done]
-# can I take out output embedding matrix? and reset? [yes]
+# can I take out output embedding matrix? and reset? [done, yes]
 
-# how to update embedding using one pair --> train_sg_pair [to do...]
+-------------------------- gensim word2vec cannot take pairs as input ----------------------------------------------------------------
+# how to update embedding using one pair --> train_sg_pair [to do... make synthetic sentences?]
 # check if more freq a pair occurs, more closer they are [yes]
 # check if and only if the center node are updated, but its positive sample and negative samples are remained [to do...]
 OR try to directly use sentences? walks? but how to obtain good walks???
+-------------------------- gensim word2vec cannot take pairs as input ----------------------------------------------------------------
 
 # how to use lock factor [to do...]
 # try in networks [to do...]
 
 # sklearn pca 2d vis [done]
+# dump and load word2vec model using pickle [done]
 '''
 
 import gensim
@@ -43,12 +48,12 @@ def pca_vis(model):
     pyplot.show()
 
 
-# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-sentences = [['a','b'],['b','c'],['c','d']]
+sentences = [['a','b','c','d','e','f','g'],['a','b','c','d','e','f','g']]
 
-w2v = gensim.models.Word2Vec(size=6, window=1, sg=1, hs=0, negative=1, ns_exponent=1.0,
-                            alpha=0.025, min_alpha=0.0001, min_count=1, sample=0.001, iter=5, workers=4, seed=2019,
+w2v = gensim.models.Word2Vec(size=6, window=1, sg=1, hs=0, negative=1, ns_exponent=0.0,
+                            alpha=0.025, min_alpha=0.0001, min_count=1, sample=0.001, iter=4, workers=4, seed=2019,
                             sentences=None, corpus_file=None, sorted_vocab=1, batch_words=10000, compute_loss=False,
                             max_vocab_size=None, max_final_vocab=None, trim_rule=None)
 
