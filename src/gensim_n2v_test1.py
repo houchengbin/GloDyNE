@@ -1,36 +1,26 @@
 '''
-Dynamic Word2Vec example to address the following questions
+Dynamic RW-SGNS demo
 by Chengbin Hou
 
-comments: gensim word2vec cannot take pairs as input, we switch to tensorflow word2vec...
+# 1) generate two dynamic graphs
+# 2) random walks on the most affected  -> RW or RWR or RW-BFS-DFS -> walks
+     and retrain related nodes based on new walks, 
+     while keeping unrelated nodes (not in walks) unchanged
+# 4) by now, we have embeddings for two dynamic graphs, we may do the following task:
+     4.1) anomaly detection: one node in A community goes to B community
+     4.2) node classification: how label changes? but label change should related to structure?
+          based on G1 -> Z2; G2-G1 -> Z2 and do node classification
+          or similar to 4.1) ......
 
-# basic useage of Gemsim Word2Vec: given sentences -> train embedding [done]
-
-# how to update for unseen words [done]
-# how to continue traning on seen + unseen words [done]
-# check if updated embedding and similarity are changed? [done, yes]
-# how Gensim Word2Vec update embedding [done, see source code]
-
-# how to reset input embedding matrix [done]
-# can I take out output embedding matrix? and reset? [done, yes]
-
--------------------------- gensim word2vec cannot take pairs as input ----------------------------------------------------------------
-# how to update embedding using one pair --> train_sg_pair [to do... make synthetic sentences?]
-# check if more freq a pair occurs, more closer they are [yes]
-# check if and only if the center node are updated, but its positive sample and negative samples are remained [to do...]
-OR try to directly use sentences? walks? but how to obtain good walks???
--------------------------- gensim word2vec cannot take pairs as input ----------------------------------------------------------------
-
-# how to use lock factor [to do...]
-# try in networks [to do...]
-
-# sklearn pca 2d vis [done]
-# dump and load word2vec model using pickle [done]
+     4.3) link prediction: 
+          based on Z1; G1 -> Z1 -> ask if G2-G1 added edges or G1-G2 deleted edges
+          or similar to 4.4) ...... based on Z2; G1 -> Z1; G2-G1 -> Z2 and do link prediction
+     4.4) k most similar nodes: paper citation network.... retrive paper titles for a paper 
+          based on G1->Z1, G2-G1 -> Z2 and retrive on Z2 w.r.t. offline on Z2
 '''
 
 import gensim
 import logging
-
 
 
 def pca_vis(model):
