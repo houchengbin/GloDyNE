@@ -1,3 +1,8 @@
+# read me first -----------------
+# How to add new embeddings for unknown words in Tensorflow (training & pre-set for testing)
+# https://stackoverflow.com/questions/45113130/how-to-add-new-embeddings-for-unknown-words-in-tensorflow-training-pre-set-fo
+
+
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
