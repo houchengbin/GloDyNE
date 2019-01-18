@@ -27,7 +27,7 @@ def generate_initial_LFR(n=100):
     G.remove_edges_from(G.selfloop_edges())
 
     degree_dict = dict(G.degree()) # {node ID: degree, ...}
-    print('degree_dict', degree_dict)
+    # print('degree_dict', degree_dict)
 
 
     communities = {frozenset(G.nodes[v]['community']) for v in G}
@@ -37,7 +37,7 @@ def generate_initial_LFR(n=100):
         community = list(communities[i])
         for j in range(len(community)): # j goes over all nodes
             community_dict[community[j]] = i
-    print('community_dict', community_dict) # {node ID: community ID, ...}
+    # print('community_dict', community_dict) # {node ID: community ID, ...}
 
     return G, community_dict, degree_dict
 
@@ -71,30 +71,42 @@ def generate_dynamic_data(initial_G, community_dict, degrees,time_step=3, initia
         for j in range(current_edge_time_step, len(graphs)):
             graphs[j].add_edge(list(initial_edges[i])[0],list(initial_edges[i])[1])
 
-    save_dynamic_graphs(graphs)
 
     for i in range(len(graphs)):
         nx.draw_networkx(graphs[i])
         if i > 0:
-            print("edge decrease",set(graphs[i-1].edges())-set(graphs[i].edges()))
-            print("edge increase",set(graphs[i].edges()) - set(graphs[i-1].edges()))
-            print("node decrease",set(graphs[i - 1].nodes()) - set(graphs[i].nodes()))
-            print("node increase",set(graphs[i].nodes()) - set(graphs[i - 1].nodes()))
+            print("edge deleted",set(graphs[i-1].edges()) - set(graphs[i].edges()))
+            print("edge added",set(graphs[i].edges()) - set(graphs[i-1].edges()))
+            print("node deleted",set(graphs[i - 1].nodes()) - set(graphs[i].nodes()))
+            print("node added",set(graphs[i].nodes()) - set(graphs[i - 1].nodes()))
+            # 为了解决这个问题，这里需要再看看LRF生成的图是否应该有方向。如果没有方向，直接把每个graph变为undirect就行了
+            # https://networkx.github.io/documentation/stable/reference/functions.html#graph
+            # G = nx.to_undirected(G)
+            # 另外，在增加减少边时候，还要注意一个edge (a,b) 和 (b,a)的问题，可能需要一个小函数来处理
 
-        print("graph_size:",len(graphs[i]))
+            # 如果是有方向的，我们还需要进一步考虑：1）我们只针对无向图做吗？2）如果也做有向图，会遇到什么大麻烦吗？
+            # 我个人想法，我还还是focus在无方向图，具体原因我们在讨论。
+
+        print("graph_size: ", len(graphs[i]), '====== @ time step', i)
 
         plt.show(graphs[i])
 
+    return graphs
 
 
-def save_dynamic_graphs(nx_graphs, path='dynamic_graphs.data'):
+
+def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
     with open(path, 'wb') as f:
-        pickle.dump(nx_graphs, f, protocol=pickle.HIGHEST_PROTOCOL) #the higher protocol, the smaller file
-
+        pickle.dump(nx_graph, f, protocol=pickle.HIGHEST_PROTOCOL) #the higher protocol, the smaller file
     with open(path, 'rb') as f:
-        nx_graphs_reload = pickle.load(f)
-    for i in range(len(nx_graphs)):
-        print('Check if it is correctly dumped and loaded: ', nx_graphs_reload[i].edges() == nx_graphs[i].edges(), 'for Graph ', i)
+        nx_graph_reload = pickle.load(f)
+    
+    try:
+        print('Check if it is correctly dumped and loaded: ', nx_graph_reload.edges() == nx_graph.edges(), ' It contains only ONE graph')
+    except:
+        for i in range(len(nx_graph)):
+            print('Check if it is correctly dumped and loaded: ', nx_graph_reload[i].edges() == nx_graph[i].edges(), ' for Graph ', i)
+
 
 def save_any_obj(obj, path='obj_temp.data'):
     with open(path, 'wb') as f:
@@ -102,9 +114,12 @@ def save_any_obj(obj, path='obj_temp.data'):
 
 
 
-# ----------------- test start from here -----------------------------
-G, community_dict, degree_dict = generate_initial_LFR()
-save_any_obj(obj=community_dict, path='community_dict.data')
-save_any_obj(obj=degree_dict, path='degree_dict.data')
+if __name__ == '__main__':
 
-generate_dynamic_data(G, community_dict, degree_dict)
+    G, community_dict, degree_dict = generate_initial_LFR()
+    save_nx_graph(nx_graph=G, path='LFR_static_graph.data')
+    save_any_obj(obj=community_dict, path='LFR_community_dict.data')  # {node ID: degree, ...}
+    save_any_obj(obj=degree_dict, path='LFR_degree_dict.data')  # {node ID: community ID, ...}
+
+    Gs = generate_dynamic_data(G, community_dict, degree_dict)
+    save_nx_graph(nx_graph=Gs, path='LFR_dynamic_graphs.data')
