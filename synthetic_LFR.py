@@ -31,7 +31,6 @@ def generate_initial_LFR(n=100, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min_
     degree_dict = dict(G.degree())  # {node ID: degree, ...}
     # print('degree_dict', degree_dict)
 
-
     communities = {frozenset(G.nodes[v]['community']) for v in G}
     community_dict = {}
     communities = list(communities)
