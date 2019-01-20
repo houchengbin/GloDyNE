@@ -7,6 +7,7 @@ import numpy as np
 import networkx as nx
 from bisect import bisect
 import matplotlib.pyplot as plt
+import pickle
 
 def read_txt_file():
     #read the txt file
@@ -14,7 +15,7 @@ def read_txt_file():
     return lines
 
 
-def get_colledge_msg_data(no_new_node_appear = False, edge_last_n_time_step = 0, time_step_number = 10):
+def get_colledge_msg_data(no_new_node_appear = False, edge_last_n_time_step = 0, time_step_number = 5):
     """
     :param no_new_node_appear: True
     :param edge_last_n_time_step:
@@ -64,8 +65,8 @@ def get_time_based_networks(sorted_data,time_step_number, edge_last_n_time_step,
         edge_time_tag = sorted_data[i][2]
         calculated_time_step = bisect(time_step_slots, edge_time_tag)
         #print(time_step_slots)
-        print(edge_time_tag)
-        print("processing edge:",i, " total edge:",len(sorted_data), "calculated_time_step:",calculated_time_step )
+        # print(edge_time_tag)
+        # print("processing edge:",i, " total edge:",len(sorted_data), "calculated_time_step:",calculated_time_step )
 
         if edge_last_n_time_step == 0:
             for j in range(calculated_time_step, time_step_number):
@@ -80,9 +81,29 @@ def get_time_based_networks(sorted_data,time_step_number, edge_last_n_time_step,
     return graphs
 
 
+def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
+    with open(path, 'wb') as f:
+        pickle.dump(nx_graph, f, protocol=pickle.HIGHEST_PROTOCOL)  # the higher protocol, the smaller file
+    with open(path, 'rb') as f:
+        nx_graph_reload = pickle.load(f)
+
+    try:
+        print('Check if it is correctly dumped and loaded: ', nx_graph_reload.edges() == nx_graph.edges(),
+              ' It contains only ONE graph')
+    except:
+        for i in range(len(nx_graph)):
+            print('Check if it is correctly dumped and loaded: ', nx_graph_reload[i].edges() == nx_graph[i].edges(),
+                  ' for Graph ', i)
+
+
+def save_any_obj(obj, path='obj_temp.data'):
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 if __name__ == '__main__':
 
     graphs = get_colledge_msg_data()
+    save_nx_graph(nx_graph=graphs, path='colledge_msg_dynamic_graphs.data')
     for i in range(len(graphs)):
         print(len(graphs[i].edges()), "edges graph:",i)
         print(len(graphs[i].nodes()), "nodes graph:",i)
@@ -92,3 +113,4 @@ if __name__ == '__main__':
         print("show ",i)
         plt.show()
         """
+    
