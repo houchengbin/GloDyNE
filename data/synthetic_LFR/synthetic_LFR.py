@@ -4,23 +4,11 @@ import numpy as np
 import random
 import pickle
 
-"""
-n = 250
-tau1 = 3
-tau2 = 1.5
-mu = 0.1
-G = nx.algorithms.community.LFR_benchmark_graph(n, tau1, tau2, mu, average_degree=7, min_community=30)
-communities = {frozenset(G.nodes[v]['community']) for v in G}
-print(communities)
-print(list(list(list(communities))[0]))
-print(G.degree())
-nx.draw_networkx(G)
-plt.show(G)
-"""
-
-
-def generate_initial_LFR(n=10000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min_community=30, max_community=None,
-                         seed=0):
+# -----------------------------------------------------------------
+# ------------------------- data generator ------------------------
+# -----------------------------------------------------------------
+def generate_initial_LFR(n=3000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min_community=30, 
+                            max_community=None, seed=0):
     # https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.community.community_generators.LFR_benchmark_graph.html#networkx.algorithms.community.community_generators.LFR_benchmark_graph
     G = nx.algorithms.community.LFR_benchmark_graph(n=n, tau1=tau1, tau2=tau2, mu=mu,
                                                     average_degree=average_degree, min_community=min_community,
@@ -49,14 +37,8 @@ def generate_initial_LFR(n=10000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, mi
 
     print(len(community_dict), " community size")
     print(len(set(community_dict.values())), "number of community")
-
-
     # print('community_dict', community_dict)  # {node ID: community ID, ...}
-
     return G, community_dict, degree_dict
-
-
-
 
 
 def generate_dynamic_data(initial_G, community_dict, time_step=4,
@@ -99,10 +81,6 @@ def generate_dynamic_data(initial_G, community_dict, time_step=4,
             # print("edge added v2", edge_s1_minus_s0(graphs[i],graphs[i-1]))
             # print("node deleted", set(graphs[i].nodes()) - set(graphs[i-1].nodes()))
             # print("node added", set(graphs[i].nodes()) - set(graphs[i - 1].nodes()))
-            # 我们这次文章只做undirected graph；
-            # 1）直接用networkx的undirected graph，目前就是
-            # 2）用networkx的directed graph，但是我们所有的处理都必须是double edge比如只要有(a,b)，必须加或者减（a,b）+(b,a)
-            # G_directed = nx.to_directed(G_undirected)
 
         print("graph_size: ", len(graphs[i]), '====== @ time step', i)
 
@@ -110,6 +88,9 @@ def generate_dynamic_data(initial_G, community_dict, time_step=4,
 
     return graphs
 
+# ----------------------------------------------------------------
+# --------------------------- utils ------------------------------
+# ----------------------------------------------------------------
 def edge_s1_minus_s0(s1, s0, is_directed=False):
     if not is_directed:
         s1_reordered = set((a, b) if int(a) < int(b) else (b, a) for a, b in s1.edges())
@@ -117,7 +98,6 @@ def edge_s1_minus_s0(s1, s0, is_directed=False):
         return s1_reordered - s0_reordered
     else:
         print('currently not support directed case')
-
 
 def unique_nodes_from_edge_set(edge_set):
     unique_nodes = []
@@ -147,7 +127,9 @@ def save_any_obj(obj, path='obj_temp.data'):
     with open(path, 'wb') as f:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-
+# --------------------------------------------------
+# -------------------- test  -----------------------
+# --------------------------------------------------
 if __name__ == '__main__':
     G, community_dict, degree_dict = generate_initial_LFR()
     save_nx_graph(nx_graph=G, path='LFR_static_graph.data')
