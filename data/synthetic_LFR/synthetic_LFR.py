@@ -41,19 +41,18 @@ def generate_initial_LFR(n=3000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min
     return G, community_dict, degree_dict
 
 
-def generate_dynamic_data(initial_G, community_dict, time_step=4,
-                          initial_edge_porpotation=0.6):  # why this name initial_edge_porpotation
+def generate_dynamic_data(initial_G, time_step=5, initial_edge_perc=0.5):  # why this name initial_edge_perc
     # reference_graph = initial_G.copy()
     initial_nodes_number = len(initial_G.nodes())
     initial_edges_number = len(initial_G.edges())
     initial_edges = list(initial_G.edges())
-    # disappear_nodes_number = int(initial_edges_number*initial_edge_porpotation)
-    chance_each_time_step = (1 - initial_edge_porpotation) / time_step
+    # disappear_nodes_number = int(initial_edges_number*initial_edge_perc)
+    chance_each_time_step = (1 - initial_edge_perc) / time_step
 
     time_step_slots = []
-    time_step_slots.append(initial_edge_porpotation)
+    time_step_slots.append(initial_edge_perc)
     for i in range(time_step):
-        time_step_slots.append(initial_edge_porpotation + (i + 1) * chance_each_time_step)
+        time_step_slots.append(initial_edge_perc + (i + 1) * chance_each_time_step)
 
     edges_time_step = []
     for i in range(initial_edges_number):
@@ -108,7 +107,7 @@ def unique_nodes_from_edge_set(edge_set):
             unique_nodes.append(b)
     return unique_nodes
 
-def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
+def save_nx_graph(nx_graph, path='nx_graph_temp.pkl'):
     with open(path, 'wb') as f:
         pickle.dump(nx_graph, f, protocol=pickle.HIGHEST_PROTOCOL)  # the higher protocol, the smaller file
     with open(path, 'rb') as f:
@@ -123,7 +122,7 @@ def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
                   ' for Graph ', i)
 
 
-def save_any_obj(obj, path='obj_temp.data'):
+def save_any_obj(obj, path='obj_temp.pkl'):
     with open(path, 'wb') as f:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -132,10 +131,10 @@ def save_any_obj(obj, path='obj_temp.data'):
 # --------------------------------------------------
 if __name__ == '__main__':
     G, community_dict, degree_dict = generate_initial_LFR()
-    save_nx_graph(nx_graph=G, path='LFR_static_graph.data')
-    save_any_obj(obj=community_dict, path='LFR_community_dict.data')  # {node ID: degree, ...}
-    save_any_obj(obj=degree_dict, path='LFR_degree_dict.data')  # {node ID: community ID, ...}
+    # save_nx_graph(nx_graph=G, path='LFR_static_graph.pkl')
+    save_any_obj(obj=community_dict, path='LFR_node_label_dict.pkl')  # {node ID: community/label ID, ...} 
+    # save_any_obj(obj=degree_dict, path='LFR_degree_dict.pkl')  # {node ID: degree, ...}
 
-    Gs = generate_dynamic_data(G, community_dict)
-    print(len(Gs[4].nodes()))
-    save_nx_graph(nx_graph=Gs, path='LFR_dynamic_graphs.data')
+    Gs = generate_dynamic_data(G)
+    print(len(Gs[-1].nodes()))
+    save_nx_graph(nx_graph=Gs, path='LFR_dyn_graphs.pkl')
