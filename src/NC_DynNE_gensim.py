@@ -87,13 +87,13 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
 
 if __name__ == '__main__':
      # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-     community_dict = load_any_obj(path='../data/synthetic_LFR/LFR_community_dict.data') # ground truth
+     community_dict = load_any_obj(path='../data/cora/cora_node_label_dict.pkl') # ground truth
 
-     is_dyn = False
+     is_dyn = True
      if not is_dyn:
           # ------ DeepWalk
           t1 = time.time()
-          G_dynamic = load_dynamic_graphs('../data/synthetic_LFR/LFR_dynamic_graphs.data')
+          G_dynamic = load_dynamic_graphs('../data/cora/cora_dyn_graphs.pkl')
 
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
@@ -134,7 +134,7 @@ if __name__ == '__main__':
      else: # 问题1）如何选择部分被影响点；2）如果对选中的点重采样；3）原来embedding是否要重置；4）如何更新，训练多少次等，越近越重要；5）多久重启训练问题
           # ------ DynDeepWalk
           t1 = time.time()
-          G_dynamic = load_dynamic_graphs('../data/synthetic_LFR/LFR_dynamic_graphs.data')
+          G_dynamic = load_dynamic_graphs('../data/cora/cora_dyn_graphs.pkl')
 
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
