@@ -59,35 +59,36 @@ def generate_initial_LFR(n=1000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min
 
 
 def generate_dynamic_data(initial_G, community_dict, time_step=4,
-                          initial_edge_porpotation=0.6):  # why this name initial_edge_porpotation
+                          initial_edge_percent=0.6):  # why this name initial_edge_porpotation
     # reference_graph = initial_G.copy()
     initial_nodes_number = len(initial_G.nodes())
     initial_edges_number = len(initial_G.edges())
     initial_edges = list(initial_G.edges())
     # disappear_nodes_number = int(initial_edges_number*initial_edge_porpotation)
-    chance_each_time_step = (1 - initial_edge_porpotation) / time_step
+    chance_each_time_step = (1 - initial_edge_percent) / time_step
 
     time_step_slots = []
-    time_step_slots.append(initial_edge_porpotation)
+    time_step_slots.append(initial_edge_percent)
     for i in range(time_step):
-        time_step_slots.append(initial_edge_porpotation + (i + 1) * chance_each_time_step)
+        time_step_slots.append(initial_edge_percent + (i + 1) * chance_each_time_step)
+    #print(time_step_slots)
 
     edges_time_step = []
     for i in range(initial_edges_number):
         random_number = random.random()
         for j in range(len(time_step_slots)):
             if time_step_slots[j] > random_number:
-                edges_time_step.append(j)
+                edges_time_step.append(j)#the time tag for each edge
                 break
 
     graphs = []
     for i in range(time_step + 1):
         graphs.append(nx.Graph())
     for i in range(len(edges_time_step)):
-        current_edge_time_step = edges_time_step[i]
+        current_edge_time_step = edges_time_step[i]#graph index
         for j in range(current_edge_time_step, len(graphs)):
-            graphs[j].add_edge(str(list(initial_edges[i])[0]), str(list(initial_edges[i])[1]))
-
+            graphs[j].add_edge(str(list(initial_edges[i])[0]), str(list(initial_edges[i])[1]))#important
+    """
     for i in range(len(graphs)):
         #nx.draw_networkx(graphs[i])
         if i > 0:
@@ -104,8 +105,9 @@ def generate_dynamic_data(initial_G, community_dict, time_step=4,
             # G_directed = nx.to_directed(G_undirected)
 
         print("graph_size: ", len(graphs[i]), '====== @ time step', i)
-
         #plt.show(graphs[i])
+    """
+
 
     return graphs
 
