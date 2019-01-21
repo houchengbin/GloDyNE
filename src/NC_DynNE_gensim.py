@@ -3,6 +3,10 @@ Dynamic RW-SGNS demo for Node Classification task
 by Chengbin HOU & Han ZHANG
 '''
 
+import warnings
+warnings.filterwarnings("ignore")
+# warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
+
 import gensim
 import logging
 import time
@@ -12,7 +16,6 @@ import numpy as np
 from downstream import ncClassifier
 from sklearn.linear_model import LogisticRegression  # to do... try SVM...
 from utils import *
-
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
      '''
@@ -87,14 +90,21 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
 
 if __name__ == '__main__':
      # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-     community_dict = load_any_obj(path='../data/cora/cora_node_label_dict.pkl') # ground truth
+     G_dynamic = load_dynamic_graphs('../data/dblp/dblp_dyn_graphs.pkl')
+     node_label_dict = load_any_obj(path='../data/dblp/dblp_node_label_dict.pkl') # ground truth
+
+     '''
+     # retrieve most k similar nodes -> paper titles
+     node_docs_dict = load_any_obj(path='../data/dblp/dblp_node_docs_dict.pkl') # take this out will speed up program
+     random.seed(0)
+     retrieved_node = random.choice(list(G_dynamic[0].nodes()))
+     print('retrieved_node \n', retrieved_node, 'its title ', node_docs_dict[retrieved_node])
+     '''
 
      is_dyn = True
      if not is_dyn:
           # ------ DeepWalk
           t1 = time.time()
-          G_dynamic = load_dynamic_graphs('../data/cora/cora_dyn_graphs.pkl')
-
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
 
@@ -120,7 +130,7 @@ if __name__ == '__main__':
                Y = []
                for node in G_dynamic[t].nodes():
                     X.append(node)
-                    Y.append(str(community_dict[node])) # label as str, otherwise, sklearn error
+                    Y.append(str(node_label_dict[node])) # label as str, otherwise, sklearn error
                print('Node Classification task, time step @: ', t)
                ds_task = ncClassifier(vectors=emb_dict, clf=LogisticRegression())
                ds_task.split_train_evaluate(X, Y, train_precent=0.5)
@@ -134,8 +144,6 @@ if __name__ == '__main__':
      else: # 问题1）如何选择部分被影响点；2）如果对选中的点重采样；3）原来embedding是否要重置；4）如何更新，训练多少次等，越近越重要；5）多久重启训练问题
           # ------ DynDeepWalk
           t1 = time.time()
-          G_dynamic = load_dynamic_graphs('../data/cora/cora_dyn_graphs.pkl')
-
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
           w2v = gensim.models.Word2Vec(sentences=None, size=128, window=10, sg=1, hs=0, negative=5, ns_exponent=0.75,
@@ -192,10 +200,23 @@ if __name__ == '__main__':
                Y = []
                for node in G_dynamic[t].nodes():
                     X.append(node)
-                    Y.append(str(community_dict[node])) # label as str, otherwise, sklearn error
+                    Y.append(str(node_label_dict[node])) # label as str, otherwise, sklearn error
                print('Node Classification task, time step @: ', t)
                ds_task = ncClassifier(vectors=emb_dict, clf=LogisticRegression())  # use Logistic Regression as clf; we may choose SVM or more advanced ones
                ds_task.split_train_evaluate(X, Y, train_precent=0.5)
+
+               '''
+               # retrieve most k similar nodes -> paper titles
+               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.most_similar
+               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.most_similar_cosmul
+               # most_similar(positive=None, negative=None, topn=10, restrict_vocab=None, indexer=None)
+               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.similar_by_word
+               similar_nodes = [i[0] for i in w2v.similar_by_word(retrieved_node, topn=10, restrict_vocab=None)]
+               docs_dict = {}
+               for node in similar_nodes:
+                    docs_dict[node] = node_docs_dict[node]
+               print('docs_dict: \n', docs_dict)
+               '''
 
                t4 = time.time()
                print(f'current time step; time cost: {(t4-t3):.2f}s')
