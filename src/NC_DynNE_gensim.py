@@ -140,9 +140,20 @@ if __name__ == '__main__':
           t2 = time.time()
           print(f'Static NE -> all time steps; time cost: {(t2-t1):.2f}s')
      
+     # Regarding the novelty, we may need focus on the following points------------------------------------------------------------------------------------------------------------------------
+     # Method 1 -------- our novelty depends on 1) and 2)
+     # 1) how to select m most affected nodes -> further reduce complexity without lossing too much accuracy (by considering accumulated diff in some kind of reservoir using degree or else)
+     # 2) how to random walk start from those m nodes -> random walks with restart, if prob=0 -> naive random walk; if prob=1 -> always stay at starting node; try to tune prob
+     # 3) once obtain sequences for each of m nodes, shall we directly update OR reset them and then update? [do not waste too much time]
+     # 4) the hyper-parameters of Word2Vec SGNE model especially window, negative, iter [do not waste too much time]
+     # 5) when to restart? I think we only need to propose our general offline and online framework. when to restart is out futher work... [ignore for a moment]
 
-     else: # 问题1）如何选择部分被影响点；2）如果对选中的点重采样；3）原来embedding是否要重置；4）如何更新，训练多少次等，越近越重要；5）多久重启训练问题
-          # ------ DynDeepWalk
+     # Method 2 -------- [ignore for a moment] [ignore for a moment] [ignore for a moment]
+     # 1) based on the diff between G1 and G0 -> added and deleted edges/nodes
+     # 2) way1: based on the changed edges/nodes -> handcraft sequences/sentences -> feed to Word2Vec [idea: synthetic sequences; still based on Python Gensim]
+     # 2) way2: feed the changed edges/nodes -> feed to SGNS [idea: code SGNE from scratch; using Python TensorFlow]
+     else:
+          # ------ DynSGNE
           t1 = time.time()
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
