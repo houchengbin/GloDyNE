@@ -50,11 +50,17 @@ def generate_lp_test_edges(G0, G1):
                     i += 1
                if i >= num:
                     break
-     else:
-          print('---> edges added: ', len(edge_add))
-          print('---> edges deleted: ', len(edge_del))
-          print('len(edge_add) <= len(edge_del); very rare case, we did not consider this... to do...')
-          exit(0)
+     elif len(edge_add) < len(edge_del):
+          num = len(edge_del) - len(edge_add)
+          i = 0
+          for edge in nx.edges(G1):
+               if edge not in edge_add:
+                    pos_edges_with_label.append(list(edge+(1,)))
+                    i += 1
+               if i >= num:
+                    break
+     else: # len(edge_add) == len(edge_del)
+          pass
      return pos_edges_with_label, neg_edges_with_label
 
 
@@ -132,7 +138,7 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
 if __name__ == '__main__':
      # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
      # community_dict = load_any_obj(path='../data/synthetic_LFR/LFR_community_dict.data') # ground truth
-     G_dynamic = load_dynamic_graphs('../data/dblp/dblp_dyn_graphs.pkl')
+     G_dynamic = load_dynamic_graphs('../data/AS733/AS733_dyn_graphs.pkl')
 
      is_dyn = True
      if not is_dyn:
@@ -209,14 +215,22 @@ if __name__ == '__main__':
                     G0 = G_dynamic[t-1]
                     G1 = G_dynamic[t]
                     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+                    # print('---> edges added length: ', len(edge_add))
                     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-                    print('---> edges added: ', len(edge_add))
-                    print('---> edges deleted: ', len(edge_del))
+                    # print('---> edges deleted length: ', len(edge_del))
+
                     node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add)
                     node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del)
-                    node_affected = node_affected_by_edge_add + node_affected_by_edge_del
-                    print('---> nodes affected: ', len(node_affected))
-                    # 新增的点？？？
+                    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del))
+                    print('---> nodes affected length: ', len(node_affected))
+                    
+                    print('============================================', len(G1.nodes())-len(G0.nodes()))
+                    node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
+                    print('---> node added: ', node_add)
+                    node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+                    print('---> node deleted: ', node_del)
+                    if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
+                         node_affected = list(set(node_affected) - set(node_del))
 
                     sentences = simulate_walks(nx_graph=G1, num_walks=10, walk_length=80, restart_prob=None, affected_nodes=node_affected)
                     sentences = [[str(j) for j in i] for i in sentences]
