@@ -17,12 +17,14 @@ from downstream import ncClassifier, lpClassifier
 from sklearn.linear_model import LogisticRegression
 from utils import *
 
-def generate_lp_test_edges(G0, G1):
+def generate_lp_test_edges(graph_t0, graph_t1):
      import networkx as nx
      '''
      generate testing edges for link prediction task
      currently, we only consider pos_neg_ratio = 1.0
      '''
+     G0 = graph_t0.copy() 
+     G1 = graph_t1.copy() # use copy to avoid problem caused by G1.remove_node(node)
      edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
      edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
 
