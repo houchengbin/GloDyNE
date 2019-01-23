@@ -115,7 +115,7 @@ if __name__ == '__main__':
                     alpha=0.025, min_alpha=0.0001, min_count=1, sample=0.001, iter=4, workers=8, seed=2019,
                     corpus_file=None, sorted_vocab=1, batch_words=10000, compute_loss=False,
                     max_vocab_size=None, max_final_vocab=None, trim_rule=None) # w2v constructor
-               sentences = simulate_walks(nx_graph=G0, num_walks=10, walk_length=80, restart_prob=None)
+               sentences = simulate_walks(nx_graph=G0, num_walks=20, walk_length=80, restart_prob=None)
                sentences = [[str(j) for j in i] for i in sentences]
                # print('sentences[:10]', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
                w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
@@ -166,7 +166,7 @@ if __name__ == '__main__':
                t3 = time.time()
                if t ==0:
                     G0 = G_dynamic[t]
-                    sentences = simulate_walks(nx_graph=G0, num_walks=10, walk_length=80, restart_prob=None)
+                    sentences = simulate_walks(nx_graph=G0, num_walks=20, walk_length=80, restart_prob=None)
                     sentences = [[str(j) for j in i] for i in sentences]
                     # print('sentences[:10]', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
                     w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                     if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
                          node_affected = list(set(node_affected) - set(node_del))
 
-                    sentences = simulate_walks(nx_graph=G1, num_walks=10, walk_length=80, restart_prob=None, affected_nodes=node_affected)
+                    sentences = simulate_walks(nx_graph=G1, num_walks=20, walk_length=80, restart_prob=None, affected_nodes=node_affected)
                     sentences = [[str(j) for j in i] for i in sentences]
                     # print('sentences[:10] updated', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
 

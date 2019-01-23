@@ -1,6 +1,10 @@
 '''
 Dynamic RW-SGNS demo for Link Prediction task
 by Chengbin HOU & Han ZHANG
+
+todo:
+1) reset deledted nodes or continue traning
+2) what about the deleted nodes while doing negative sampling
 '''
 
 import warnings
@@ -16,6 +20,52 @@ import numpy as np
 import networkx as nx
 from utils import gen_test_edge_wrt_changes, load_dynamic_graphs, edge_s1_minus_s0, unique_nodes_from_edge_set
 from downstream import lpClassifier
+
+def most_affected_nodes(graph_t0, graph_t1, reservoir_dict=None, update_threshold=0.2):
+     G0 = graph_t0.copy()
+     G1 = graph_t1.copy()
+
+     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+     # print('---> edges added length: ', len(edge_add))
+     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
+     # print('---> edges deleted length: ', len(edge_del))
+
+     node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add) # unique
+     node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del) # unique
+     node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del)) # unique
+     print('---> nodes affected; length: ', len(node_affected))
+     
+     node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
+     print('---> node added; length: ', len(node_add))
+     # print('---> node added: ', node_add)
+     node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+     print('---> node deleted; length: ', len(node_del))
+     # print('---> node deleted: ', node_del)
+
+     # method 1: all affected nodes in G1
+     # if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
+     #     node_update_list = list(set(node_affected) - set(node_del))
+          
+     # method 2: m most affected nodes in G1 based on (# of affected time on a node)/(its node degree)
+     node_update_list = node_add # newly added (unseen) nodes mush be to update
+     exist_node_affected = list(set(node_affected) - set(node_del) - set(node_add))  # affected nodes are in both G0 and G1
+     for node in exist_node_affected:
+          nbrs_set1 = set(nx.neighbors(G=G1, n=node))
+          nbrs_set0 = set(nx.neighbors(G=G0, n=node))
+          changes = len( nbrs_set1.union(nbrs_set0) - nbrs_set1.intersection(nbrs_set0) )
+          if node in reservoir_dict.keys():
+               reservoir_dict[node] += changes # accumulated changes
+          else:
+               reservoir_dict[node] = changes  # newly added changes
+
+          degree = nx.degree(G=G0, nbunch=node) # node inertia; the larger degree the more likely not updated
+          score = reservoir_dict[node] / degree # may be larger than 1 if the changes are too large w.r.t. its degree
+          if score > update_threshold: # -------------  del it from reservoir & append it to update list -------------
+               node_update_list.append(node)
+               del reservoir_dict[node]
+
+     return node_update_list, reservoir_dict
+
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
      '''
@@ -108,7 +158,7 @@ if __name__ == '__main__':
                     alpha=0.025, min_alpha=0.0001, min_count=1, sample=0.001, iter=4, workers=8, seed=2019,
                     corpus_file=None, sorted_vocab=1, batch_words=10000, compute_loss=False,
                     max_vocab_size=None, max_final_vocab=None, trim_rule=None) # w2v constructor
-               sentences = simulate_walks(nx_graph=G0, num_walks=10, walk_length=80, restart_prob=None)
+               sentences = simulate_walks(nx_graph=G0, num_walks=20, walk_length=80, restart_prob=None)
                sentences = [[str(j) for j in i] for i in sentences]
                # print('sentences[:10]', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
                w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
@@ -153,12 +203,13 @@ if __name__ == '__main__':
                               alpha=0.025, min_alpha=0.0001, min_count=1, sample=0.001, iter=4, workers=8, seed=2019,
                               corpus_file=None, sorted_vocab=1, batch_words=10000, compute_loss=False,
                               max_vocab_size=None, max_final_vocab=None, trim_rule=None) # w2v constructor
-
+          
+          reservoir = {} # {nodeID: # of times affected, ...}
           for t in range(len(G_dynamic)):
                t3 = time.time()
                if t ==0:
                     G0 = G_dynamic[t]
-                    sentences = simulate_walks(nx_graph=G0, num_walks=10, walk_length=80, restart_prob=None)
+                    sentences = simulate_walks(nx_graph=G0, num_walks=20, walk_length=80, restart_prob=None)
                     sentences = [[str(j) for j in i] for i in sentences]
                     # print('sentences[:10]', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
                     w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
@@ -166,26 +217,8 @@ if __name__ == '__main__':
                else:
                     G0 = G_dynamic[t-1]
                     G1 = G_dynamic[t]
-                    edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
-                    # print('---> edges added length: ', len(edge_add))
-                    edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-                    # print('---> edges deleted length: ', len(edge_del))
-
-                    node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add)
-                    node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del)
-                    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del))
-                    print('---> nodes affected; length: ', len(node_affected))
-                    
-                    node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
-                    print('---> node added; length: ', len(node_add))
-                    # print('---> node added: ', node_add)
-                    node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
-                    print('---> node deleted; length: ', len(node_del))
-                    # print('---> node deleted: ', node_del)
-                    if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
-                         node_affected = list(set(node_affected) - set(node_del))
-
-                    sentences = simulate_walks(nx_graph=G1, num_walks=10, walk_length=80, restart_prob=None, affected_nodes=node_affected)
+                    node_update_list, reservoir = most_affected_nodes(graph_t0=G0, graph_t1=G1, reservoir_dict=reservoir, update_threshold=0.2)
+                    sentences = simulate_walks(nx_graph=G1, num_walks=20, walk_length=80, restart_prob=None, affected_nodes=node_update_list)
                     sentences = [[str(j) for j in i] for i in sentences]
                     # print('sentences[:10] updated', sentences[:10]) # if set restart_prob=1, each sentence only contains itself
 
