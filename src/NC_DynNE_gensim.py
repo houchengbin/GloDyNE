@@ -91,7 +91,7 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
 if __name__ == '__main__':
      # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
      G_dynamic = load_dynamic_graphs('../data/dblp/dblp_dyn_graphs.pkl')
-     node_label_dict = load_any_obj(path='../data/dblp/dblp_dyn_graphs.pkl') # ground truth
+     node_label_dict = load_any_obj(path='../data/dblp/dblp_node_label_dict.pkl') # ground truth
 
      '''
      # retrieve most k similar nodes -> paper titles
@@ -173,16 +173,25 @@ if __name__ == '__main__':
                     w2v.train(sentences=sentences, total_examples=w2v.corpus_count, epochs=w2v.iter) # follow w2v constructor
                else:
                     G0 = G_dynamic[t-1]
-                    G1 = G_dynamic[t]
+                    G1 = G_dynamic[t]   
                     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+                    # print('---> edges added length: ', len(edge_add))
                     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-                    print('---> edges added: ', len(edge_add))
-                    print('---> edges deleted: ', len(edge_del))
+                    # print('---> edges deleted length: ', len(edge_del))
+
                     node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add)
                     node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del)
-                    node_affected = node_affected_by_edge_add + node_affected_by_edge_del
-                    print('---> nodes affected: ', len(node_affected))
-                    # 新增的点？？？
+                    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del))
+                    print('---> nodes affected; length: ', len(node_affected))
+                    
+                    node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
+                    print('---> node added; length: ', len(node_add))
+                    # print('---> node added: ', node_add)
+                    node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+                    print('---> node deleted; length: ', len(node_del))
+                    # print('---> node deleted: ', node_del)
+                    if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
+                         node_affected = list(set(node_affected) - set(node_del))
 
                     sentences = simulate_walks(nx_graph=G1, num_walks=10, walk_length=80, restart_prob=None, affected_nodes=node_affected)
                     sentences = [[str(j) for j in i] for i in sentences]
@@ -213,7 +222,7 @@ if __name__ == '__main__':
                     X.append(node)
                     Y.append(str(node_label_dict[node])) # label as str, otherwise, sklearn error
                print('Node Classification task, time step @: ', t)
-               ds_task = ncClassifier(vectors=emb_dict, clf=LogisticRegression())  # use Logistic Regression as clf; we may choose SVM or more advanced ones
+               ds_task = ncClassifier(emb_dict=emb_dict, clf=LogisticRegression())  # use Logistic Regression as clf; we may choose SVM or more advanced ones
                ds_task.split_train_evaluate(X, Y, train_precent=0.5)
 
                '''

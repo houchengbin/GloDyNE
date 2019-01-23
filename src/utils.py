@@ -97,7 +97,7 @@ def average_precision_score(y_true, y_score, k=10):
     unique_y = np.unique(y_true)
     if len(unique_y) > 2:
         raise ValueError("Only supported for two relevance levels.")
-    pos_label = unique_y[1]
+    pos_label = unique_y[1] # 1 as true
     n_pos = np.sum(y_true == pos_label)
     order = np.argsort(y_score)[::-1][:min(n_pos, k)] # note: if k>n_pos, we use fixed n_pos; otherwise use given k 
     y_pred_true = np.asarray(y_true)[order]
@@ -108,13 +108,13 @@ def average_precision_score(y_true, y_score, k=10):
             # i.e, percentage of relevant documents up to document i.
             prec = 0
             for j in range(i + 1):  # precision @1, @2, ..., @ min(n_pos, k)
-                if y_pred_true[j] == pos_label:
+                if y_pred_true[j] == pos_label: # pred true --> ground truth also positive
                     prec += 1.0
-            prec /= (i + 1.0)  # 1.0 for smooth, otherwise get error if i=0
+            prec /= (i + 1.0)  # precision @i where i=1,2, ... ; note: i+1.0 since i start from 0
             score += prec
     if n_pos == 0:
         return 0
-    return score / n_pos
+    return score / n_pos # micro-score; if macro-score use np.sum(score)/np.size(score)
 
 
 # ----------------------------------------------------------------------------------

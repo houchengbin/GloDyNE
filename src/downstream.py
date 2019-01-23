@@ -16,7 +16,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.multiclass import OneVsRestClassifier
 class ncClassifier(object):
     def __init__(self, emb_dict, clf):
-        self.embeddings = vectors
+        self.embeddings = emb_dict
         self.clf = TopKRanker(clf)  # here clf is LR
         self.binarizer = MultiLabelBinarizer(sparse_output=True)
 

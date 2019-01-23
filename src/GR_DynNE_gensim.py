@@ -175,11 +175,11 @@ if __name__ == '__main__':
                     print('---> nodes affected; length: ', len(node_affected))
                     
                     node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
-                    # print('---> node added; length: ', len(node_add))
-                    print('---> node added: ', node_add)
+                    print('---> node added; length: ', len(node_add))
+                    # print('---> node added: ', node_add)
                     node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
-                    # print('---> node deleted; length: ', len(node_del))
-                    print('---> node deleted: ', node_del)
+                    print('---> node deleted; length: ', len(node_del))
+                    # print('---> node deleted: ', node_del)
                     if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
                          node_affected = list(set(node_affected) - set(node_del))
 
