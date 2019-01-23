@@ -13,58 +13,9 @@ import time
 import random
 import pickle
 import numpy as np
-from downstream import ncClassifier, lpClassifier
-from sklearn.linear_model import LogisticRegression
-from utils import *
-
-def generate_lp_test_edges(graph_t0, graph_t1):
-     import networkx as nx
-     '''
-     generate testing edges for link prediction task
-     currently, we only consider pos_neg_ratio = 1.0
-     '''
-     G0 = graph_t0.copy() 
-     G1 = graph_t1.copy() # use copy to avoid problem caused by G1.remove_node(node)
-     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
-     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-
-     unseen_nodes = set(G1.nodes()) - set(G0.nodes())
-     for node in unseen_nodes: # to avoid unseen nodes while testing
-          G1.remove_node(node)
-     
-     edge_add_unseen_node = [] # to avoid unseen nodes while testing
-     #print('len(edge_add)', len(edge_add))
-     for node in unseen_nodes: 
-          for edge in edge_add:
-               if node in edge:
-                    edge_add_unseen_node.append(edge)
-     edge_add = edge_add - set(edge_add_unseen_node)
-     #print('len(edge_add)', len(edge_add))
-
-     pos_edges_with_label = [list(item+(1,)) for item in edge_add]
-     neg_edges_with_label = [list(item+(0,)) for item in edge_del]
-     if len(edge_add) > len(edge_del):
-          num = len(edge_add) - len(edge_del)
-          i = 0
-          for non_edge in nx.non_edges(G1):
-               if non_edge not in edge_del:
-                    neg_edges_with_label.append(list(non_edge+(0,)))
-                    i += 1
-               if i >= num:
-                    break
-     elif len(edge_add) < len(edge_del):
-          num = len(edge_del) - len(edge_add)
-          i = 0
-          for edge in nx.edges(G1):
-               if edge not in edge_add:
-                    pos_edges_with_label.append(list(edge+(1,)))
-                    i += 1
-               if i >= num:
-                    break
-     else: # len(edge_add) == len(edge_del)
-          pass
-     return pos_edges_with_label, neg_edges_with_label
-
+import networkx as nx
+from utils import gen_test_edge_wrt_changes, load_dynamic_graphs, edge_s1_minus_s0, unique_nodes_from_edge_set
+from downstream import lpClassifier
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
      '''
@@ -167,14 +118,13 @@ if __name__ == '__main__':
                for node in G_dynamic[t].nodes():
                     emb_dict[node] = w2v.wv[str(node)]
 
-               # generate equal numbers of positive and negative edges for LP test
                if t < len(G_dynamic)-1:
                     print('Link Prediction task, time step @: ', t)
-                    pos_edges_with_label, neg_edges_with_label = generate_lp_test_edges(G_dynamic[t],G_dynamic[t+1]) #take this out!!!!!!!!!!!!!!!!!!!!!!!!!
+                    pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) #take this out!!!!!!!!!!!!!!!!!!!!!!!!!
                     test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
                     test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
-                    ds_task = lpClassifier(vectors=emb_dict)  # similarity/distance metric as clf; basically, lp is a binary clf probelm
-                    ds_task.evaluate(test_edges, test_label)
+                    ds_task = lpClassifier(emb_dict=emb_dict)  # similarity/distance metric as clf; basically, lp is a binary clf probelm
+                    ds_task.evaluate_auc(test_edges, test_label)
 
                t4 = time.time()
                print(f'current time step; time cost: {(t4-t3):.2f}s')
@@ -224,12 +174,13 @@ if __name__ == '__main__':
                     node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add)
                     node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del)
                     node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del))
-                    print('---> nodes affected length: ', len(node_affected))
+                    print('---> nodes affected; length: ', len(node_affected))
                     
-                    print('============================================', len(G1.nodes())-len(G0.nodes()))
                     node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
+                    # print('---> node added; length: ', len(node_add))
                     print('---> node added: ', node_add)
                     node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+                    # print('---> node deleted; length: ', len(node_del))
                     print('---> node deleted: ', node_del)
                     if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
                          node_affected = list(set(node_affected) - set(node_del))
@@ -259,11 +210,11 @@ if __name__ == '__main__':
                # generate equal numbers of positive and negative edges for LP test
                if t < len(G_dynamic)-1:
                     print('Link Prediction task, time step @: ', t)
-                    pos_edges_with_label, neg_edges_with_label = generate_lp_test_edges(G_dynamic[t],G_dynamic[t+1])
+                    pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1])
                     test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
                     test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
-                    ds_task = lpClassifier(vectors=emb_dict)  # similarity/distance metric as clf; basically, lp is a binary clf probelm
-                    ds_task.evaluate(test_edges, test_label)
+                    ds_task = lpClassifier(emb_dict=emb_dict)  # similarity/distance metric as clf; basically, lp is a binary clf probelm
+                    ds_task.evaluate_auc(test_edges, test_label)
 
                t4 = time.time()
                print(f'current time step; time cost: {(t4-t3):.2f}s')

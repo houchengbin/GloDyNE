@@ -3,20 +3,19 @@ downstream tasks; each task is a class;
 by Chengbin Hou & Zeyu Dong
 """
 
-import math
 import random
-
 import numpy as np
-from sklearn.metrics import f1_score, roc_auc_score
-from sklearn.multiclass import OneVsRestClassifier
+import networkx as nx
+
+
+# ----------------------------------------------------------------------------------
+# ------------- node classification task based on F1 score -------------------------
+# ----------------------------------------------------------------------------------
+from sklearn.metrics import f1_score
 from sklearn.preprocessing import MultiLabelBinarizer
-
-
-# ------------------node classification task---------------------------
-
+from sklearn.multiclass import OneVsRestClassifier
 class ncClassifier(object):
-
-    def __init__(self, vectors, clf):
+    def __init__(self, emb_dict, clf):
         self.embeddings = vectors
         self.clf = TopKRanker(clf)  # here clf is LR
         self.binarizer = MultiLabelBinarizer(sparse_output=True)
@@ -29,7 +28,6 @@ class ncClassifier(object):
         Y_train = [Y[shuffle_indices[i]] for i in range(training_size)]
         X_test = [X[shuffle_indices[i]] for i in range(training_size, len(X))]
         Y_test = [Y[shuffle_indices[i]] for i in range(training_size, len(X))]
-
         self.train(X_train, Y_train, Y)
         np.random.set_state(state)
         return self.evaluate(X_test, Y_test)
@@ -60,6 +58,7 @@ class ncClassifier(object):
             results[average] = f1_score(Y, Y_, average=average)
         print(results)
         return results
+
 class TopKRanker(OneVsRestClassifier):  # orignal LR or SVM is for binary clf
     def predict(self, X, top_k_list):  # re-define predict func of OneVsRestClassifier
         probs = np.asarray(super(TopKRanker, self).predict_proba(X))
@@ -74,14 +73,17 @@ class TopKRanker(OneVsRestClassifier):  # orignal LR or SVM is for binary clf
         return np.asarray(all_labels)
 
 
-# ------------------link prediction task---------------------------
-class lpClassifier(object):
 
-    def __init__(self, vectors):
-        self.embeddings = vectors
+# ----------------------------------------------------------------------------------
+# ------------------ link prediction task based on AUC score -----------------------
+# ----------------------------------------------------------------------------------
+from utils import cosine_similarity, auc_score
+class lpClassifier(object):
+    def __init__(self, emb_dict):
+        self.embeddings = emb_dict
 
     # clf here is simply a similarity/distance metric
-    def evaluate(self, X_test, Y_test, seed=0):
+    def evaluate_auc(self, X_test, Y_test):
         test_size = len(X_test)
         Y_true = [int(i) for i in Y_test]
         Y_probs = []
@@ -95,63 +97,92 @@ class lpClassifier(object):
             # switch to prob... however, we may also directly y_score = score
             Y_probs.append((score + 1) / 2.0)
             # in sklearn roc... which yields the same reasult
-        roc = roc_auc_score(y_true=Y_true, y_score=Y_probs)
-        if roc < 0.5:
-            roc = 1.0 - roc  # since lp is binary clf task, just predict the opposite if<0.5
-        print("roc=", "{:.9f}".format(roc))
+        auc = auc_score(y_true=Y_true, y_score=Y_probs)
+        print("auc=", "{:.9f}".format(auc))
 
-def norm(a):
-    sum = 0.0
-    for i in range(len(a)):
-        sum = sum + a[i] * a[i]
-    return math.sqrt(sum)
 
-def cosine_similarity(a, b):
-    sum = 0.0
-    for i in range(len(a)):
-        sum = sum + a[i] * b[i]
-    return sum / (norm(a) * norm(b) + 1e-100)
 
-'''
-def lp_train_test_split(graph, ratio=0.8, neg_pos_link_ratio=1.0):
-    # randomly split links/edges into training set and testing set
-    # *** note: we do not assume every node must be connected after removing links
-    # *** hence, the resulting graph might have few single nodes --> more realistic scenario
-    # *** e.g. a user just sign in a website has no link to others
+# --------------------------------------------------------------------------------------
+# ------------- graph reconstruction task based on precision@k score -------------------
+# --------------------------------------------------------------------------------------
+from utils import pairwise_similarity, ranking_precision_score, average_precision_score
+class grClassifier(object):
+    def __init__(self, emb_dict, rc_graph):
+        self.embeddings = emb_dict
+        self.adj_mat, self.score_mat = self.gen_test_data_wrt_graph_truth(graph=rc_graph)
+    
+    def gen_test_data_wrt_graph_truth(self, graph):
+        ''' input: a networkx graph
+            output: adj matrix and score matrix; note both matrices are symmetric
+        '''
+        G = graph.copy()
+        adj_mat = nx.to_numpy_array(G=G, nodelist=None) # ordered by G.nodes(); n-by-n
+        adj_mat = np.where(adj_mat==0, 0, 1) # vectorized implementation weighted -> unweighted if necessary
+        emb_mat = []
+        for node in G.nodes():
+            emb_mat.append(self.embeddings[node])
+        score_mat = pairwise_similarity(emb_mat, type='cosine') # n-by-n corresponding to adj_mat
+        return np.array(adj_mat), np.array(score_mat)
 
-    # graph: OpenANE graph data strcture
-    # ratio: perc of links for training; ranging [0, 1]
-    # neg_pos_link_ratio: 1.0 means neg-links/pos-links = 1.0 i.e. balance case; raning [0, +inf)
-    g = graph
-    print("links for training {:.2f}%, and links for testing {:.2f}%, neg_pos_link_ratio is {:.2f}".format(
-        ratio * 100, (1 - ratio) * 100, neg_pos_link_ratio))
-    test_pos_sample = []
-    test_neg_sample = []
-    train_size = int(ratio * len(g.G.edges))
-    test_size = len(g.G.edges) - train_size
+    def evaluate_precision_k(self, top_k, node_list=None):
+        ''' Precision at rank k; to be merged with average_precision_score()
+        '''
+        pk_list = []
+        if node_list==None: # eval all nodes
+            size = self.adj_mat.shape[0] # num of rows -> num of nodes
+            for i in range(size):
+                pk_list.append(ranking_precision_score(self.adj_mat[i], self.score_mat[i], k=top_k)) # ranking_precision_score
+        else: # only eval on node_list
+            print('currently not support specified node list')
+            exit(0)
+        print("ranking_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
-    # generate testing set that contains both pos and neg samples
-    test_pos_sample = random.sample(g.G.edges(), int(test_size))
-    test_neg_sample = []
-    num_neg_sample = int(test_size * neg_pos_link_ratio)
-    num = 0
-    while num < num_neg_sample:
-        pair_nodes = np.random.choice(g.look_back_list, size=2, replace=False)
-        if pair_nodes not in g.G.edges():
-            num += 1
-            test_neg_sample.append(list(pair_nodes))
+    def evaluate_average_precision_k(self, top_k, node_list=None):
+        ''' Average precision at rank k; to be merged with evaluate_precision_k()
+        '''
+        pk_list = []
+        if node_list==None: # eval all nodes
+            size = self.adj_mat.shape[0] # num of rows -> num of nodes
+            for i in range(size):
+                pk_list.append(average_precision_score(self.adj_mat[i], self.score_mat[i], k=top_k)) # average_precision_score
+        else: # only eval on node_list
+            print('currently not support specified node list')
+            exit(0)
+        print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
-    test_edge_pair = test_pos_sample + test_neg_sample
-    test_edge_label = list(np.ones(len(test_pos_sample))) + \
-        list(np.zeros(len(test_neg_sample)))
 
-    print('before removing, the # of links: ', g.numDiEdges(),
-          ';   the # of single nodes: ', g.numSingleNodes())
-    # training set should NOT contain testing set i.e. delete testing pos samples
-    g.G.remove_edges_from(test_pos_sample)
-    print('after removing,  the # of links: ', g.numDiEdges(),
-          ';   the # of single nodes: ', g.numSingleNodes())
-    print("# training links {0}; # positive testing links {1}; # negative testing links {2},".format(
-        g.numDiEdges(), len(test_pos_sample), len(test_neg_sample)))
-    return g.G, test_edge_pair, test_edge_label
-'''
+# -----------------------------------------------------------------------------------
+# ------------- top-k retrive task based on similarity score ------------------------
+# -----------------------------------------------------------------------------------
+# todo...
+
+
+
+
+# --------------------------------------------------------------------------------
+# ------------------------- 2D/3d visualization task -----------------------------
+# --------------------------------------------------------------------------------
+from sklearn.decomposition import PCA
+from matplotlib import pyplot
+def pca_vis(model):
+    ''' simple vis use matplotlib
+    input: word2vec model [change to model.vv using pickle]
+    output: vis
+    '''
+    # fit a 2d PCA model to the vectors
+    X = model[model.wv.vocab]
+    pca = PCA(n_components=2,random_state=None)
+    result = pca.fit_transform(X)
+    # create a scatter plot of the projection
+    pyplot.scatter(result[:, 0], result[:, 1])
+    words = list(model.wv.vocab)
+    for i, word in enumerate(words):
+        pyplot.annotate(word, xy=(result[i, 0], result[i, 1]))
+    pyplot.show()
+
+def tf_vis():
+    ''' vis using tensorflow
+    see vis.py file
+    to do...
+    ''' 
+    pass

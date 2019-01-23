@@ -1,5 +1,5 @@
 '''
-Dynamic RW-SGNS demo for Node Classification task
+Dynamic RW-SGNS demo for Link Prediction task
 by Chengbin HOU & Han ZHANG
 '''
 
@@ -13,9 +13,9 @@ import time
 import random
 import pickle
 import numpy as np
-from downstream import ncClassifier
-from sklearn.linear_model import LogisticRegression  # to do... try SVM...
-from utils import *
+import networkx as nx
+from utils import load_dynamic_graphs, edge_s1_minus_s0, unique_nodes_from_edge_set
+from downstream import grClassifier
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
      '''
@@ -90,25 +90,18 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
 
 if __name__ == '__main__':
      # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-     G_dynamic = load_dynamic_graphs('../data/dblp/dblp_dyn_graphs.pkl')
-     node_label_dict = load_any_obj(path='../data/dblp/dblp_dyn_graphs.pkl') # ground truth
-
-     '''
-     # retrieve most k similar nodes -> paper titles
-     node_docs_dict = load_any_obj(path='../data/dblp/dblp_node_docs_dict.pkl') # take this out will speed up program
-     random.seed(0)
-     retrieved_node = random.choice(list(G_dynamic[0].nodes()))
-     print('retrieved_node \n', retrieved_node, 'its title ', node_docs_dict[retrieved_node])
-     '''
+     # community_dict = load_any_obj(path='../data/synthetic_LFR/LFR_community_dict.data') # ground truth
+     G_dynamic = load_dynamic_graphs('../data/AS733/AS733_dyn_graphs.pkl')
 
      is_dyn = True
      if not is_dyn:
           # ------ DeepWalk
           t1 = time.time()
+
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
 
-          for t in range(len(G_dynamic)):
+          for t in range(len(G_dynamic)):                    
                t3 = time.time()
                G0 = G_dynamic[t]
                w2v = gensim.models.Word2Vec(sentences=None, size=128, window=10, sg=1, hs=0, negative=5, ns_exponent=0.75,
@@ -125,21 +118,17 @@ if __name__ == '__main__':
                for node in G_dynamic[t].nodes():
                     emb_dict[node] = w2v.wv[str(node)]
 
-               # only select current available nodes for eval
-               X = []
-               Y = []
-               for node in G_dynamic[t].nodes():
-                    X.append(node)
-                    Y.append(str(node_label_dict[node])) # label as str, otherwise, sklearn error
-               print('Node Classification task, time step @: ', t)
-               ds_task = ncClassifier(emb_dict=emb_dict, clf=LogisticRegression())
-               ds_task.split_train_evaluate(X, Y, train_precent=0.5)
+               if t < len(G_dynamic)-1:
+                    print('Graph Reconstruction task, time step @: ', t)
+                    ds_task = grClassifier(emb_dict=emb_dict, rc_graph=G_dynamic[t])  # reconstruct current graph @ t
+                    ds_task.evaluate_precision_k(top_k=20)
+                    ds_task.evaluate_average_precision_k(top_k=20)
 
                t4 = time.time()
                print(f'current time step; time cost: {(t4-t3):.2f}s')
           t2 = time.time()
           print(f'Static NE -> all time steps; time cost: {(t2-t1):.2f}s')
-     
+
      # Regarding the novelty, we may need focus on the following points------------------------------------------------------------------------------------------------------------------------
      # Method 1 -------- our novelty depends on 1) and 2)
      # 1) how to select m most affected nodes -> further reduce complexity without lossing too much accuracy (by considering accumulated diff in some kind of reservoir using degree or else)
@@ -155,6 +144,7 @@ if __name__ == '__main__':
      else:
           # ------ DynSGNE
           t1 = time.time()
+
           # SGNS and suggested parameters to be tuned: size, window, negative, workers, seed
           # to tune other parameters, please read https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec
           w2v = gensim.models.Word2Vec(sentences=None, size=128, window=10, sg=1, hs=0, negative=5, ns_exponent=0.75,
@@ -175,14 +165,23 @@ if __name__ == '__main__':
                     G0 = G_dynamic[t-1]
                     G1 = G_dynamic[t]
                     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+                    # print('---> edges added length: ', len(edge_add))
                     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-                    print('---> edges added: ', len(edge_add))
-                    print('---> edges deleted: ', len(edge_del))
+                    # print('---> edges deleted length: ', len(edge_del))
+
                     node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add)
                     node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del)
-                    node_affected = node_affected_by_edge_add + node_affected_by_edge_del
-                    print('---> nodes affected: ', len(node_affected))
-                    # 新增的点？？？
+                    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del))
+                    print('---> nodes affected; length: ', len(node_affected))
+                    
+                    node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
+                    # print('---> node added; length: ', len(node_add))
+                    print('---> node added: ', node_add)
+                    node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+                    # print('---> node deleted; length: ', len(node_del))
+                    print('---> node deleted: ', node_del)
+                    if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
+                         node_affected = list(set(node_affected) - set(node_del))
 
                     sentences = simulate_walks(nx_graph=G1, num_walks=10, walk_length=80, restart_prob=None, affected_nodes=node_affected)
                     sentences = [[str(j) for j in i] for i in sentences]
@@ -206,28 +205,16 @@ if __name__ == '__main__':
                save_emb(emb_dict=emb_dict, path=path)
                # lemb_dict = load_emb(path)
                '''
-               # only select current available nodes for eval
-               X = []
-               Y = []
-               for node in G_dynamic[t].nodes():
-                    X.append(node)
-                    Y.append(str(node_label_dict[node])) # label as str, otherwise, sklearn error
-               print('Node Classification task, time step @: ', t)
-               ds_task = ncClassifier(vectors=emb_dict, clf=LogisticRegression())  # use Logistic Regression as clf; we may choose SVM or more advanced ones
-               ds_task.split_train_evaluate(X, Y, train_precent=0.5)
-
-               '''
-               # retrieve most k similar nodes -> paper titles
-               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.most_similar
-               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.most_similar_cosmul
-               # most_similar(positive=None, negative=None, topn=10, restrict_vocab=None, indexer=None)
-               # https://radimrehurek.com/gensim/models/keyedvectors.html#gensim.models.keyedvectors.WordEmbeddingsKeyedVectors.similar_by_word
-               similar_nodes = [i[0] for i in w2v.similar_by_word(retrieved_node, topn=10, restrict_vocab=None)]
-               docs_dict = {}
-               for node in similar_nodes:
-                    docs_dict[node] = node_docs_dict[node]
-               print('docs_dict: \n', docs_dict)
-               '''
+               # generate equal numbers of positive and negative edges for LP test
+               if t < len(G_dynamic)-1:
+                    print('Graph Reconstruction task, time step @: ', t)
+                    ds_task = grClassifier(emb_dict=emb_dict, rc_graph=G_dynamic[t])  # reconstruct current graph @ t
+                    ds_task.evaluate_precision_k(top_k=1)
+                    ds_task.evaluate_precision_k(top_k=2)
+                    ds_task.evaluate_precision_k(top_k=3)
+                    ds_task.evaluate_precision_k(top_k=4)
+                    ds_task.evaluate_precision_k(top_k=5)
+                    ds_task.evaluate_average_precision_k(top_k=5)
 
                t4 = time.time()
                print(f'current time step; time cost: {(t4-t3):.2f}s')
