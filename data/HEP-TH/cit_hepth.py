@@ -159,7 +159,7 @@ def save_any_obj(obj, path='obj_temp.data'):
 
 if __name__ == '__main__':
     graphs = generate_cit_Hepth_networks()
-    save_nx_graph(nx_graph=graphs, path='Cit-HepTh_dynamic_graphs.data')
+    save_nx_graph(nx_graph=graphs, path='Cit-HepTh_dynamic_graphs.pkl')
     print((translate_string_2_date('1999-02-24')-translate_string_2_date('1993-03-18')).days)
     a =set([1,2,3])
     b = set([1])
