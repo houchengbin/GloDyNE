@@ -106,4 +106,4 @@ if __name__ == '__main__':
     detect_exentence_file()
     """
     graphs = generate_dynamic_graph(start_date='19991009', time_step_number=10, stop_at_irregular_interval=False)
-    save_nx_graph(nx_graph=graphs, path='AS733_dyn_graphs.pkl')
+    save_nx_graph(nx_graph=graphs, path='as733_dyn_graphs.pkl')
