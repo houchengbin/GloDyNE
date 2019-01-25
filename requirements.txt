@@ -1,0 +1,14 @@
+# tested in python==3.6.8
+gensim==3.6.0 
+networkx==2.2 
+scikit-learn==0.20.2 
+matplotlib==3.0.2 
+
+# Enable GPU:
+# If using anaconda, run `conda install tensorflow-gpu==1.10.0`
+
+# For cuda driver compatibility: https://docs.nvidia.com/deploy/cuda-compatibility/index.html
+# For example, if driver version is 384.xx then also install cudatoolkit==9.0
+
+# Or simply build from docker image: docker pull tensorflow/tensorflow:1.10.0-gpu-py3
+# ref: https://www.tensorflow.org/install/docker#gpu_support

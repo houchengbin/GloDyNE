@@ -1,0 +1,208 @@
+......Chengbin HOU @SUSTech 2019......
+cora aane lp with diff link sparsity......
+......good luck......
+-------------------restart-prob 0.0 -----------------------------------------
+------ START @ 2019-01-25 11:51:59 GMT Standard Time ------
+Summary of all settings: Namespace(emb_dim=128, emb_file='output/cora_DynRWSG_128_embs.pkl', graph='data/cora/cora_dyn_graphs.pkl', label='data/cora/cora_node_label_dict.pkl', method='DynRWSG', negative=5, num_walks=20, restart_prob=0.0, seed=2019, task='all', update_threshold=0.1, walk_length=80, window=10, workers=24)
+
+STEP1: start loading data......
+STEP1: end loading data; time cost: 0.10s
+
+STEP2: start learning embeddings......
+The model used: DynRWSG --------------------             
+The # of dynamic graphs: 6;             
+The # of nodes @t_init: 2233, and @t_last 2708             
+The # of edges @t_init: 2734, and @t_last 5278
+random walk sampling, time cost: 12.77
+DynRWSG sampling and traning time: 38.02s --> 1/6
+num of nodes in reservoir with accumulated changes but not updated 10
+all newly added nodes must be updated, 145 but ..... 
+num of nodes deleted 0, affected 802, to be updated 792
+random walk sampling, time cost: 5.66
+DynRWSG sampling and traning time: 18.67s --> 2/6
+num of nodes in reservoir with accumulated changes but not updated 8
+all newly added nodes must be updated, 115 but ..... 
+num of nodes deleted 0, affected 784, to be updated 777
+random walk sampling, time cost: 5.02
+DynRWSG sampling and traning time: 19.00s --> 3/6
+num of nodes in reservoir with accumulated changes but not updated 19
+all newly added nodes must be updated, 91 but ..... 
+num of nodes deleted 0, affected 796, to be updated 778
+random walk sampling, time cost: 4.53
+DynRWSG sampling and traning time: 15.50s --> 4/6
+num of nodes in reservoir with accumulated changes but not updated 26
+all newly added nodes must be updated, 72 but ..... 
+num of nodes deleted 0, affected 761, to be updated 739
+random walk sampling, time cost: 4.29
+DynRWSG sampling and traning time: 16.03s --> 5/6
+num of nodes in reservoir with accumulated changes but not updated 28
+all newly added nodes must be updated, 52 but ..... 
+num of nodes deleted 0, affected 776, to be updated 751
+random walk sampling, time cost: 3.91
+DynRWSG sampling and traning time: 15.38s --> 6/6
+STEP3: end learning embeddings; time cost: 132.57s
+
+STEP3: start evaluating ......: 
+Current time step @t: 0
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.789917818
+Current time step @t: 1
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.847131051
+Current time step @t: 2
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.851022054
+Current time step @t: 3
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.866069782
+Current time step @t: 4
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.876824835
+Current time step @t: 0
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8584502138665075, 'macro': 0.6952009465604656, 'samples': 0.8584502138665077, 'weighted': 0.8945204590382706}
+Current time step @t: 1
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8571161573684702, 'macro': 0.6948734975841026, 'samples': 0.8571161573684704, 'weighted': 0.8944313583688949}
+Current time step @t: 2
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8605542190145238, 'macro': 0.7008715405746448, 'samples': 0.8605542190145239, 'weighted': 0.8963013255184755}
+Current time step @t: 3
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8617131062951497, 'macro': 0.71403619118975, 'samples': 0.8617131062951497, 'weighted': 0.8988097628986246}
+Current time step @t: 4
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8669678714859438, 'macro': 0.7174047527020831, 'samples': 0.8669678714859439, 'weighted': 0.9024670454619572}
+Current time step @t: 5
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8668964385360249, 'macro': 0.7113269170380335, 'samples': 0.8668964385360249, 'weighted': 0.9024893762046072}
+Current time step @t: 0
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999926985
+average_precision_score= 0.192026884
+Current time step @t: 1
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999635537
+average_precision_score= 0.218166073
+Current time step @t: 2
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.998840160
+average_precision_score= 0.241755085
+Current time step @t: 3
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999478802
+average_precision_score= 0.264297675
+Current time step @t: 4
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.998800241
+average_precision_score= 0.279221926
+Current time step @t: 5
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999660672
+average_precision_score= 0.302804490
+STEP3: end evaluating; time cost: 25.52s
+------ END @ 2019-01-25 11:54:37 GMT Standard Time ------
+--done--
+-------------------restart-prob 0.1 -----------------------------------------
+------ START @ 2019-01-25 11:54:39 GMT Standard Time ------
+Summary of all settings: Namespace(emb_dim=128, emb_file='output/cora_DynRWSG_128_embs.pkl', graph='data/cora/cora_dyn_graphs.pkl', label='data/cora/cora_node_label_dict.pkl', method='DynRWSG', negative=5, num_walks=20, restart_prob=0.1, seed=2019, task='all', update_threshold=0.1, walk_length=80, window=10, workers=24)
+
+STEP1: start loading data......
+STEP1: end loading data; time cost: 0.05s
+
+STEP2: start learning embeddings......
+The model used: DynRWSG --------------------             
+The # of dynamic graphs: 6;             
+The # of nodes @t_init: 2233, and @t_last 2708             
+The # of edges @t_init: 2734, and @t_last 5278
+random walk sampling, time cost: 8.85
+DynRWSG sampling and traning time: 36.46s --> 1/6
+num of nodes in reservoir with accumulated changes but not updated 10
+all newly added nodes must be updated, 145 but ..... 
+num of nodes deleted 0, affected 802, to be updated 792
+random walk sampling, time cost: 4.13
+DynRWSG sampling and traning time: 18.42s --> 2/6
+num of nodes in reservoir with accumulated changes but not updated 8
+all newly added nodes must be updated, 115 but ..... 
+num of nodes deleted 0, affected 784, to be updated 777
+random walk sampling, time cost: 1.85
+DynRWSG sampling and traning time: 12.21s --> 3/6
+num of nodes in reservoir with accumulated changes but not updated 19
+all newly added nodes must be updated, 91 but ..... 
+num of nodes deleted 0, affected 796, to be updated 778
+random walk sampling, time cost: 1.87
+DynRWSG sampling and traning time: 15.69s --> 4/6
+num of nodes in reservoir with accumulated changes but not updated 26
+all newly added nodes must be updated, 72 but ..... 
+num of nodes deleted 0, affected 761, to be updated 739
+random walk sampling, time cost: 1.78
+DynRWSG sampling and traning time: 12.29s --> 5/6
+num of nodes in reservoir with accumulated changes but not updated 28
+all newly added nodes must be updated, 52 but ..... 
+num of nodes deleted 0, affected 776, to be updated 751
+random walk sampling, time cost: 1.82
+DynRWSG sampling and traning time: 12.54s --> 6/6
+STEP3: end learning embeddings; time cost: 109.01s
+
+STEP3: start evaluating ......: 
+Current time step @t: 0
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.841768201
+Current time step @t: 1
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.906176421
+Current time step @t: 2
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.893555057
+Current time step @t: 3
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.902162310
+Current time step @t: 4
+Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1
+auc= 0.905623958
+Current time step @t: 0
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8562618123943102, 'macro': 0.699419712174721, 'samples': 0.8562618123943103, 'weighted': 0.8948880454432798}
+Current time step @t: 1
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8582375478927203, 'macro': 0.6992350936701299, 'samples': 0.8582375478927203, 'weighted': 0.8949773356596322}
+Current time step @t: 2
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8598413971308919, 'macro': 0.7003246143740353, 'samples': 0.859841397130892, 'weighted': 0.8969504043061173}
+Current time step @t: 3
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8649810801513587, 'macro': 0.7113990543657298, 'samples': 0.8649810801513589, 'weighted': 0.9002313744059346}
+Current time step @t: 4
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8676372155287818, 'macro': 0.7156877655216034, 'samples': 0.8676372155287819, 'weighted': 0.9023548692340352}
+Current time step @t: 5
+Node Classification task by F1 score: use current emb @t to infer **current** corepsonding label @t
+{'micro': 0.8687017889381258, 'macro': 0.7178073664932496, 'samples': 0.8687017889381259, 'weighted': 0.9046793997299862}
+Current time step @t: 0
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999922117
+average_precision_score= 0.189915635
+Current time step @t: 1
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999594779
+average_precision_score= 0.228192533
+Current time step @t: 2
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999166124
+average_precision_score= 0.257286934
+Current time step @t: 3
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999474589
+average_precision_score= 0.281076913
+Current time step @t: 4
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999486651
+average_precision_score= 0.298626878
+Current time step @t: 5
+Graph Reconstruction by MAP @100 task: use current emb @t to reconstruct **current** graph @t
+ranking_precision_score= 0.999343094
+average_precision_score= 0.321465619
+STEP3: end evaluating; time cost: 16.20s
+------ END @ 2019-01-25 11:56:45 GMT Standard Time ------
+--done--
+......well done......
