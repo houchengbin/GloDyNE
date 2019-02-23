@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument('--emb-file', default='output/cora_DynRWSG_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
     # -------------------------------------------------method settings-----------------------------------------------------------
-    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DeepWalk', 'Line', 'Node2Vec'],
+    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DeepWalk', 'GraRep', 'Line', 'Node2Vec'],
                         help='choices of Network Embedding methods')
     parser.add_argument('--restart-prob', default=0.2, type=float,
                         help='restart probability for random walks; raning [0.0, 1.0]')
@@ -59,6 +59,9 @@ def parse_args():
                         help='# of parallel processes.')
     parser.add_argument('--seed', default=2019, type=int,
                         help='random seed')
+    # walk based methods
+    parser.add_argument('--Kstep', default=4, type=int,
+                        help='Kstep used in GraRep model, error if not emb_dim % Kstep == 0')
     args = parser.parse_args()
     return args
 
@@ -93,6 +96,10 @@ def main(args):
         model = DeepWalk.DeepWalk(G_dynamic=G_dynamic, emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
                                     window=args.window, workers=args.workers, negative=args.negative, restart_prob=None, seed=args.seed)
         model.sampling_traning()
+    elif args.method == 'GraRep':
+        from libne import GraRep
+        model = GraRep.GraRep(G_dynamic=G_dynamic, emb_dim=args.emb_dim, Kstep=args.Kstep)
+        model.traning()
     else:
         print('method not found...')
         exit(0)
