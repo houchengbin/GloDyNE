@@ -32,3 +32,13 @@ python src/vis.py --emb-file output/cora_abrw_emb --label-file data/cora/cora_la
 cd DynNE
 bash bash/cora_DynRWSG.sh
 ```
+## Datasets
+We take the latest 11 time steps (or 10 time intervals) of the following dynamic networks:
+
+DynFacebook (social): 
+
+DynHepth (citation):
+
+DynAS733 (Anomymous System):
+
+DynLFR (synthetic):

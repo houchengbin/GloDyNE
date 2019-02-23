@@ -41,7 +41,7 @@ def generate_initial_LFR(n=3000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min
     return G, community_dict, degree_dict
 
 
-def generate_dynamic_data(initial_G, time_step=5, initial_edge_perc=0.5):  # why this name initial_edge_perc
+def generate_dynamic_data(initial_G, time_step=6, initial_edge_perc=0.7):  # why this name initial_edge_perc
     # reference_graph = initial_G.copy()
     initial_nodes_number = len(initial_G.nodes())
     initial_edges_number = len(initial_G.edges())
@@ -135,6 +135,10 @@ if __name__ == '__main__':
     save_any_obj(obj=community_dict, path='LFR_node_label_dict.pkl')  # {node ID: community/label ID, ...} 
     # save_any_obj(obj=degree_dict, path='LFR_degree_dict.pkl')  # {node ID: degree, ...}
 
-    Gs = generate_dynamic_data(G)
-    print(len(Gs[-1].nodes()))
-    save_nx_graph(nx_graph=Gs, path='LFR_dyn_graphs.pkl')
+    graphs = generate_dynamic_data(G)
+    print(len(graphs[-1].nodes()))
+    save_nx_graph(nx_graph=graphs[-6:], path='LFR_dyn_graphs.pkl')
+
+    graphs = graphs[-6:]
+    for i in range(len(graphs)):
+        print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

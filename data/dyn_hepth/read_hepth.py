@@ -38,7 +38,7 @@ def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
                   ' for Graph ', i)
 
 
-def generate_dynamic_graph(time_step_number=10):
+def generate_dynamic_graph(time_step_number=100):
     lines = read_txt_file()
     """
     min_mum_non_zero_time = 1015891201
@@ -88,4 +88,8 @@ def generate_dynamic_graph(time_step_number=10):
 
 if __name__ == '__main__':
     graphs = generate_dynamic_graph()
-    # save_nx_graph(nx_graph=graphs, path='youtube_dynamic_graphs.data')
+    save_nx_graph(nx_graph=graphs[-6:], path='youtube_dynamic_graphs.data')
+
+    graphs = graphs[-6:]
+    for i in range(len(graphs)):
+        print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

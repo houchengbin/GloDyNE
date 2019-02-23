@@ -34,7 +34,7 @@ def save_nx_graph(nx_graph, path='nx_graph_temp.data'):
             print('Check if it is correctly dumped and loaded: ', nx_graph_reload[i].edges() == nx_graph[i].edges(),
                   ' for Graph ', i)
 
-def generate_dynamic_graph(time_step_number = 5):
+def generate_dynamic_graph(time_step_number = 100):
     lines = read_txt_file()
     """
     min_mum_non_zero_time = 1232231923
@@ -87,7 +87,8 @@ def generate_dynamic_graph(time_step_number = 5):
 if __name__ == '__main__':
 
     graphs = generate_dynamic_graph()
-    #save_nx_graph(nx_graph=graphs, path='facebook_dynamic_graphs.data')
+    save_nx_graph(nx_graph=graphs[-6:], path='facebook_dynamic_graphs.data')
+
+    graphs = graphs[-6:]
     for i in range(len(graphs)):
-        print(len(graphs[i].edges()), "edges graph:", i)
-        print(len(graphs[i].nodes()), "nodes graph:", i)
+        print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

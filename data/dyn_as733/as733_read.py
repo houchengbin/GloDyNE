@@ -105,5 +105,9 @@ if __name__ == '__main__':
     print(date_2_string(start_date))
     detect_exentence_file()
     """
-    graphs = generate_dynamic_graph(start_date='19991009', time_step_number=10, stop_at_irregular_interval=False)
+    graphs = generate_dynamic_graph(start_date='19991226', time_step_number=6, stop_at_irregular_interval=False)
     save_nx_graph(nx_graph=graphs, path='as733_dyn_graphs.pkl')
+
+    graphs = graphs[-6:]
+    for i in range(len(graphs)):
+        print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))
