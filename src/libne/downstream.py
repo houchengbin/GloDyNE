@@ -203,7 +203,7 @@ class grClassifier(object):
 
 
 
-
+"""
 # --------------------------------------------------------------------------------
 # ------------------------- 2D/3d visualization task -----------------------------
 # --------------------------------------------------------------------------------
@@ -225,9 +225,11 @@ def pca_vis(model):
         pyplot.annotate(word, xy=(result[i, 0], result[i, 1]))
     pyplot.show()
 
+
 def tf_vis():
     ''' vis using tensorflow
     see vis.py file
     to do...
     ''' 
     pass
+"""

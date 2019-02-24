@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument('--emb-file', default='output/cora_DynRWSG_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
     # -------------------------------------------------method settings-----------------------------------------------------------
-    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DeepWalk', 'GraRep', 'Line', 'Node2Vec'],
+    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DeepWalk', 'GraRep', 'HOPE'],
                         help='choices of Network Embedding methods')
     parser.add_argument('--restart-prob', default=0.2, type=float,
                         help='restart probability for random walks; raning [0.0, 1.0]')
@@ -99,6 +99,10 @@ def main(args):
     elif args.method == 'GraRep':
         from libne import GraRep
         model = GraRep.GraRep(G_dynamic=G_dynamic, emb_dim=args.emb_dim, Kstep=args.Kstep)
+        model.traning()
+    elif args.method == 'HOPE':
+        from libne import HOPE
+        model = HOPE.HOPE(G_dynamic=G_dynamic, emb_dim=args.emb_dim)
         model.traning()
     else:
         print('method not found...')
