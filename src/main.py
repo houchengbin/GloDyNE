@@ -150,7 +150,7 @@ def main(args):
     if args.task == 'gr' or args.task == 'all':
         from libne.downstream import grClassifier
         for t in range(len(G_dynamic)):
-            precision_at_k = 100
+            precision_at_k = 50
             print(f'Current time step @t: {t}')
             print(f'Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
             ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t
