@@ -10,6 +10,24 @@ Metadata	Timestamps:  Edges are annotated with a timestamps Timestamps
 Size	28,093 vertices (authors)
 Volume	4,596,803 edges (collaborations)
 Unique volume	3,148,447 edges (collaborations)
+
+We equally divide it into 100 time steps and then choose 50-64 time steps
+
+@ graph 0 # of nodes 8063 # of edges 326080
+@ graph 1 # of nodes 8331 # of edges 349321
+@ graph 2 # of nodes 8682 # of edges 369787
+@ graph 3 # of nodes 9039 # of edges 398234
+@ graph 4 # of nodes 9317 # of edges 425758
+@ graph 5 # of nodes 9590 # of edges 445088
+@ graph 6 # of nodes 9905 # of edges 469080
+@ graph 7 # of nodes 10321 # of edges 524170
+@ graph 8 # of nodes 10534 # of edges 550938
+@ graph 9 # of nodes 10846 # of edges 585503
+@ graph 10 # of nodes 11092 # of edges 605842
+@ graph 11 # of nodes 11397 # of edges 619930
+@ graph 12 # of nodes 11768 # of edges 656389
+@ graph 13 # of nodes 12105 # of edges 684477
+@ graph 14 # of nodes 12474 # of edges 709070
 """
 
 import numpy as np
@@ -88,8 +106,8 @@ def generate_dynamic_graph(time_step_number=100):
 
 if __name__ == '__main__':
     graphs = generate_dynamic_graph()
-    save_nx_graph(nx_graph=graphs[-6:], path='youtube_dynamic_graphs.data')
+    save_nx_graph(nx_graph=graphs[50:65], path='hepph_dynamic_graphs.data')
 
-    graphs = graphs[-6:]
+    graphs = graphs[50:65]
     for i in range(len(graphs)):
         print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

@@ -6,6 +6,24 @@ import pickle
 
 """
 The dataset contains 733 daily instances which span an interval of 785 days from November 8 1997 to January 2 2000
+
+We take the latest 15 dates from 19991217 to 19991231:
+
+@ graph 0 # of nodes 2070 # of edges 4596
+@ graph 1 # of nodes 2073 # of edges 4604
+@ graph 2 # of nodes 2102 # of edges 4675
+@ graph 3 # of nodes 2067 # of edges 4580
+@ graph 4 # of nodes 2080 # of edges 4638
+@ graph 5 # of nodes 2095 # of edges 4659
+@ graph 6 # of nodes 2083 # of edges 4629
+@ graph 7 # of nodes 2058 # of edges 4587
+@ graph 8 # of nodes 2063 # of edges 4594
+@ graph 9 # of nodes 2092 # of edges 4653
+@ graph 10 # of nodes 2089 # of edges 4637
+@ graph 11 # of nodes 2122 # of edges 4707
+@ graph 12 # of nodes 2120 # of edges 4683
+@ graph 13 # of nodes 2132 # of edges 4715
+@ graph 14 # of nodes 2107 # of edges 4676
 """
 
 
@@ -105,9 +123,9 @@ if __name__ == '__main__':
     print(date_2_string(start_date))
     detect_exentence_file()
     """
-    graphs = generate_dynamic_graph(start_date='19991226', time_step_number=6, stop_at_irregular_interval=False)
+    graphs = generate_dynamic_graph(start_date='19991217', time_step_number=15, stop_at_irregular_interval=False)
     save_nx_graph(nx_graph=graphs, path='as733_dyn_graphs.pkl')
 
-    graphs = graphs[-6:]
+    graphs = graphs[-15:]
     for i in range(len(graphs)):
         print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

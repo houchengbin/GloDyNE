@@ -8,6 +8,24 @@ Average degree	25.640 edges / vertex
 
 Data source	http://socialnetworks.mpi-sws.org/data-wosn2009.html
 
+We equally divide it into 100 time steps and then choose the last 15 time steps
+
+@ graph 0 # of nodes 59102 # of edges 702760
+@ graph 1 # of nodes 59363 # of edges 710385
+@ graph 2 # of nodes 59585 # of edges 717906
+@ graph 3 # of nodes 59860 # of edges 725955
+@ graph 4 # of nodes 60163 # of edges 734712
+@ graph 5 # of nodes 60446 # of edges 743118
+@ graph 6 # of nodes 60765 # of edges 751408
+@ graph 7 # of nodes 61185 # of edges 761767
+@ graph 8 # of nodes 61569 # of edges 771521
+@ graph 9 # of nodes 62025 # of edges 781482
+@ graph 10 # of nodes 62449 # of edges 792530
+@ graph 11 # of nodes 62978 # of edges 803719
+@ graph 12 # of nodes 63550 # of edges 814306
+@ graph 13 # of nodes 63731 # of edges 817031
+@ graph 14 # of nodes 63731 # of edges 817035
+
 """
 
 import numpy as np
@@ -87,8 +105,8 @@ def generate_dynamic_graph(time_step_number = 100):
 if __name__ == '__main__':
 
     graphs = generate_dynamic_graph()
-    save_nx_graph(nx_graph=graphs[-6:], path='facebook_dynamic_graphs.data')
+    save_nx_graph(nx_graph=graphs[-15:], path='facebook_dynamic_graphs.data')
 
-    graphs = graphs[-6:]
+    graphs = graphs[-15:]
     for i in range(len(graphs)):
         print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))

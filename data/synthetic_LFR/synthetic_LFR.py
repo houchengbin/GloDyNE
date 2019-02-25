@@ -4,10 +4,31 @@ import numpy as np
 import random
 import pickle
 
+
+'''
+The final graph follow LFR distribution? We randomly preserve 40% edges and then equally add edges for 15 steps ...
+
+@ graph 0 # of nodes 4313 # of edges 4762
+@ graph 1 # of nodes 4465 # of edges 5216
+@ graph 2 # of nodes 4581 # of edges 5653
+@ graph 3 # of nodes 4692 # of edges 6105
+@ graph 4 # of nodes 4792 # of edges 6565
+@ graph 5 # of nodes 4860 # of edges 7049
+@ graph 6 # of nodes 4907 # of edges 7457
+@ graph 7 # of nodes 4946 # of edges 7887
+@ graph 8 # of nodes 4991 # of edges 8326
+@ graph 9 # of nodes 5024 # of edges 8741
+@ graph 10 # of nodes 5059 # of edges 9164
+@ graph 11 # of nodes 5081 # of edges 9586
+@ graph 12 # of nodes 5091 # of edges 9995
+@ graph 13 # of nodes 5098 # of edges 10404
+@ graph 14 # of nodes 5099 # of edges 10830
+'''
+
 # -----------------------------------------------------------------
 # ------------------------- data generator ------------------------
 # -----------------------------------------------------------------
-def generate_initial_LFR(n=3000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min_community=30, 
+def generate_initial_LFR(n=5100, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min_community=30, 
                             max_community=None, seed=0):
     # https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.community.community_generators.LFR_benchmark_graph.html#networkx.algorithms.community.community_generators.LFR_benchmark_graph
     G = nx.algorithms.community.LFR_benchmark_graph(n=n, tau1=tau1, tau2=tau2, mu=mu,
@@ -41,7 +62,7 @@ def generate_initial_LFR(n=3000, tau1=3, tau2=1.5, mu=0.1, average_degree=4, min
     return G, community_dict, degree_dict
 
 
-def generate_dynamic_data(initial_G, time_step=6, initial_edge_perc=0.7):  # why this name initial_edge_perc
+def generate_dynamic_data(initial_G, time_step=15, initial_edge_perc=0.4):  # why this name initial_edge_perc
     # reference_graph = initial_G.copy()
     initial_nodes_number = len(initial_G.nodes())
     initial_edges_number = len(initial_G.edges())
@@ -137,8 +158,8 @@ if __name__ == '__main__':
 
     graphs = generate_dynamic_data(G)
     print(len(graphs[-1].nodes()))
-    save_nx_graph(nx_graph=graphs[-6:], path='LFR_dyn_graphs.pkl')
+    save_nx_graph(nx_graph=graphs[-15:], path='LFR_dyn_graphs.pkl')
 
-    graphs = graphs[-6:]
+    graphs = graphs[-15:]
     for i in range(len(graphs)):
         print('@ graph', i, '# of nodes', len(graphs[i].nodes()), '# of edges', len(graphs[i].edges()))
