@@ -173,6 +173,24 @@ def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected
      else:                     # simulate walks on affected nodes [online]
           nodes = list(affected_nodes)
      
+     ''' multi-processors; use it iff the # of nodes over 20k
+     if restart_prob == None: # naive random walk
+          t1 = time.time()
+          for walk_iter in range(num_walks):
+               random.shuffle(nodes)
+               from itertools import repeat
+               from multiprocessing import Pool, freeze_support
+               with Pool(processes=5) as pool:
+                    # results = [pool.apply_async(random_walk, args=(G, node, walk_length)) for node in nodes]
+                    # results = [p.get() for p in results]
+                    results = pool.starmap(random_walk, zip(repeat(G), nodes, repeat(walk_length)))
+               for result in results:
+                    walks.append(result)
+          t2 = time.time()
+          print('all walks',len(walks))
+          print(f'random walk sampling, time cost: {(t2-t1):.2f}')
+     '''
+     
      if restart_prob == None: # naive random walk
           t1 = time.time()
           for walk_iter in range(num_walks):
