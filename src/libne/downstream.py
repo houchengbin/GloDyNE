@@ -97,7 +97,11 @@ class lpClassifier(object):
             # switch to prob... however, we may also directly y_score = score
             Y_probs.append((score + 1) / 2.0)
             # in sklearn roc... which yields the same reasult
-        auc = auc_score(y_true=Y_true, y_score=Y_probs)
+        if len(Y_true) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
+            print('------- NOTE: two graphs do not have any change -> no testing data -> set auc to 1......')
+            auc = 1.0
+        else:
+            auc = auc_score(y_true=Y_true, y_score=Y_probs)
         print("auc=", "{:.9f}".format(auc))
 
 def gen_test_edge_wrt_changes(graph_t0, graph_t1):
