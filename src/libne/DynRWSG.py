@@ -75,7 +75,7 @@ class DynRWSG(object):
                else:      # online adapting --------------------
                     G0 = self.G_dynamic[t-1]  # previous graph
                     G1 = self.G_dynamic[t]    # current graph
-                    node_update_list, self.reservoir = most_affected_nodes(graph_t0=G0, graph_t1=G1, update_threshold=self.update_threshold, reservoir_dict=self.reservoir)
+                    node_update_list, self.reservoir = most_affected_nodes(graph_t0=G0, graph_t1=G1, update_threshold=self.update_threshold, reservoir_dict=self.reservoir) # note: self.reservoir for accumulated changes
                     sentences = simulate_walks(nx_graph=G1, num_walks=self.num_walks, walk_length=self.walk_length, restart_prob=self.restart_prob, affected_nodes=node_update_list)
                     sentences = [[str(j) for j in i] for i in sentences]
                     w2v.build_vocab(sentences=sentences, update=True) # online update
@@ -117,9 +117,9 @@ def most_affected_nodes(graph_t0, graph_t1, update_threshold, reservoir_dict):
      G0 = graph_t0.copy()
      G1 = graph_t1.copy()
 
-     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+     edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges())) # one may directly use streaming added edges if possible
      # print('---> edges added length: ', len(edge_add))
-     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
+     edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges())) # one may directly use streaming added edges if possible
      # print('---> edges deleted length: ', len(edge_del))
 
      node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add) # unique
@@ -150,7 +150,7 @@ def most_affected_nodes(graph_t0, graph_t1, update_threshold, reservoir_dict):
           else:
                reservoir_dict[node] = changes  # newly added changes
 
-          degree = nx.degree(G=G0, nbunch=node) # node inertia; the larger degree the more likely not updated
+          degree = nx.degree(G=G0, nbunch=node) # node inertia; the larger degrees require the larger changes to trigger
           score = reservoir_dict[node] / degree # may be larger than 1 if the changes are too large w.r.t. its degree
           if score > update_threshold: # -------------  del it from reservoir & append it to update list -------------
                node_update_list.append(node)
