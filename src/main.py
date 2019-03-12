@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument('--emb-file', default='output/cora_DynRWSG_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
     # -------------------------------------------------method settings-----------------------------------------------------------
-    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DeepWalk', 'GraRep', 'HOPE'],
+    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DynRWSG_random', 'DeepWalk', 'GraRep', 'HOPE'],
                         help='choices of Network Embedding methods')
     parser.add_argument('--restart-prob', default=0.2, type=float,
                         help='restart probability for random walks; raning [0.0, 1.0]')
@@ -88,6 +88,12 @@ def main(args):
     if args.method == 'DynRWSG':
         from libne import DynRWSG  
         model = DynRWSG.DynRWSG(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
+                                    emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
+                                    window=args.window, workers=args.workers, negative=args.negative, seed=args.seed)
+        model.sampling_traning()
+    elif args.method == 'DynRWSG_random':
+        from libne import DynRWSG_random  
+        model = DynRWSG_random.DynRWSG_random(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
                                     emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
                                     window=args.window, workers=args.workers, negative=args.negative, seed=args.seed)
         model.sampling_traning()
