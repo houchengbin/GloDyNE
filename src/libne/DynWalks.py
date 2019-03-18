@@ -159,6 +159,7 @@ def node_selecting_scheme(graph_t0, graph_t1, update_threshold, reservoir_dict, 
 
      print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
      print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
+     print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
      return node_update_list, reservoir_dict
 
 
