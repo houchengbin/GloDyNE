@@ -1,7 +1,7 @@
 '''
-add DynRWSG_random method
-DynRWSG: update new nodes + selected most affected nodes from old nodes
-DynRWSG_random: update new nodes + equal @ of DynRWSG selected nodes but with random choices
+add DynWalks_random method
+DynWalks: update new nodes + selected most affected nodes from old nodes
+DynWalks_random: update new nodes + equal @ of DynWalks selected nodes but with random choices
 
 Aim: to show the effectiveness of "node selecting scheme", 
 core idea: accumulated changes in reservoir w.r.t. node local connectivity --> node "inertia"
@@ -23,7 +23,7 @@ import networkx as nx
 from .utils import edge_s1_minus_s0, unique_nodes_from_edge_set
 
 
-class DynRWSG_random(object):
+class DynWalks_random(object):
      def __init__(self, G_dynamic, restart_prob=0.2, update_threshold=0.1, emb_dim=128, 
                     num_walks=20, walk_length=80, window=10, workers=20, negative=5, seed=2019):
           self.G_dynamic = G_dynamic.copy()  # a series of dynamic graphs
@@ -70,9 +70,9 @@ class DynRWSG_random(object):
                     emb_dict[node] = w2v.wv[str(node)]
                self.emb_dicts.append(emb_dict)
                t2 = time.time()
-               print(f'DynRWSG sampling and traning time: {(t2-t1):.2f}s --> {t+1}/{len(self.G_dynamic)}')
+               print(f'DynWalks sampling and traning time: {(t2-t1):.2f}s --> {t+1}/{len(self.G_dynamic)}')
           
-          return self.emb_dicts  # To save memory useage, we can delete DynRWSG model after training
+          return self.emb_dicts  # To save memory useage, we can delete DynWalks model after training
 
      def save_emb(self, path='unnamed_dyn_emb_dicts.pkl'):
           ''' save # emb_dict @ t0, t1, ... to a file using pickle

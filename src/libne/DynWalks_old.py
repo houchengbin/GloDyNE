@@ -1,12 +1,28 @@
 '''
-add DynRWSG_noacc method
-DynRWSG: update new nodes + selected most affected nodes from old nodes
-DynRWSG_noacc: update new nodes + selected most affected nodes (not consider accumulated changes) from old nodes
+A Dynamic Network Embedding Method: DynWalks
+"sampling by Randow Walks with restart and training by Skip-Gram with negative sampling model"
+by Chengbin HOU & Han ZHANG 2019
 
-Aim: to show the effectiveness of "accumulated changes"
-core idea: accumulated changes store in reservoir -> reset reservoir every time
+todo:
+1) reset deledted nodes or continue traning
+2) what about the deleted nodes while doing negative sampling
+3) currently accept fixed size of dynamic graphs; but it would be better to accept streaming graphs/edges;
+     OR accept previous DynWalks model and continue traning
+4) parallel random walk
 
-by Chengbin Hou 2019
+
+# Regarding the novelty, we may need focus on the following points------------------------------------------------------------------------------------------------------------------------
+# Method 1 -------- our novelty depends on 1) and 2)
+# 1) how to select m most affected nodes -> further reduce complexity without lossing too much accuracy (by considering accumulated diff in some kind of reservoir using degree or else)
+# 2) how to random walk start from those m nodes -> random walks with restart, if prob=0 -> naive random walk; if prob=1 -> always stay at starting node; try to tune prob
+# 3) once obtain sequences for each of m nodes, shall we directly update OR reset them and then update? [do not waste too much time]
+# 4) the hyper-parameters of Word2Vec SGNE model especially window, negative, iter [do not waste too much time]
+# 5) when to restart? I think we only need to propose our general offline and online framework. when to restart is out futher work... [ignore for a moment]
+
+# Method 2 -------- [ignore for a moment] [ignore for a moment] [ignore for a moment]
+# 1) based on the diff between G1 and G0 -> added and deleted edges/nodes
+# 2) way1: based on the changed edges/nodes -> handcraft sequences/sentences -> feed to Word2Vec [idea: synthetic sequences; still based on Python Gensim]
+# 2) way2: feed the changed edges/nodes -> feed to SGNS [idea: code SGNE from scratch; using Python TensorFlow]
 '''
 
 import time
@@ -23,7 +39,7 @@ import networkx as nx
 from .utils import edge_s1_minus_s0, unique_nodes_from_edge_set
 
 
-class DynRWSG_noacc(object):
+class DynWalks(object):
      def __init__(self, G_dynamic, restart_prob=0.2, update_threshold=0.1, emb_dim=128, 
                     num_walks=20, walk_length=80, window=10, workers=20, negative=5, seed=2019):
           self.G_dynamic = G_dynamic.copy()  # a series of dynamic graphs
@@ -70,9 +86,9 @@ class DynRWSG_noacc(object):
                     emb_dict[node] = w2v.wv[str(node)]
                self.emb_dicts.append(emb_dict)
                t2 = time.time()
-               print(f'DynRWSG sampling and traning time: {(t2-t1):.2f}s --> {t+1}/{len(self.G_dynamic)}')
+               print(f'DynWalks sampling and traning time: {(t2-t1):.2f}s --> {t+1}/{len(self.G_dynamic)}')
           
-          return self.emb_dicts  # To save memory useage, we can delete DynRWSG model after training
+          return self.emb_dicts  # To save memory useage, we can delete DynWalks model after training
 
      def save_emb(self, path='unnamed_dyn_emb_dicts.pkl'):
           ''' save # emb_dict @ t0, t1, ... to a file using pickle
@@ -131,8 +147,6 @@ def most_affected_nodes(graph_t0, graph_t1, update_threshold, reservoir_dict):
           changes = len( nbrs_set1.union(nbrs_set0) - nbrs_set1.intersection(nbrs_set0) )
           if node in reservoir_dict.keys():
                reservoir_dict[node] += changes # accumulated changes
-               print('ERROR EXIT, plz check, do not consider accumulated changes')
-               exit(0)
           else:
                reservoir_dict[node] = changes  # newly added changes
 
@@ -144,8 +158,6 @@ def most_affected_nodes(graph_t0, graph_t1, update_threshold, reservoir_dict):
      print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
      print(f'all newly added nodes must be updated, {len(node_add)} but ..... ')
      print(f'num of nodes deleted {len(node_del)}, affected {len(node_affected)}, to be updated {len(node_update_list)}')
-
-     reservoir_dict = {} # reset reservoir --> do not consider accumulated changes
      return node_update_list, reservoir_dict
 
 

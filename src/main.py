@@ -1,14 +1,14 @@
 '''
-demo of node embedding in dynamic environment: DynRWSG and its competitors
+demo of node embedding in dynamic environment: DynWalks and its competitors
 STEP1: prepare data --> 
 (currently the input data is all dynamic graphs at a time; todo... input data as streaming graphs/edges if possible)
 STEP2: learn node embeddings -->
 STEP3: downstream evaluations
 
-python src/main.py --method DynRWSG --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynRWSG_128_embs.pkl --num-walks 20 --restart-prob 0.2 --update-threshold 0.1 --emb-dim 128 --workers 24
+python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --restart-prob 0.2 --update-threshold 0.1 --emb-dim 128 --workers 24
 
-DynRWSG hyper-parameters:
-restart_prob=0.2, update_threshold=0.1,     # DynRWSG key hyper-parameters
+DynWalks hyper-parameters:
+restart_prob=0.2, update_threshold=0.1,     # DynWalks key hyper-parameters
 num_walks=20, walk_length=80,               # deepwalk hyper-parameters
 window=10, negative=5,                      # Skig-Gram hyper-parameters
 seed=2019, workers=20,                      # should not related to accuracy
@@ -36,15 +36,19 @@ def parse_args():
                         help='node embeddings dimensions')
     parser.add_argument('--task', default='save', choices=['lp', 'nc', 'gr', 'all', 'save'],
                         help='choices of downstream tasks: lp, nc, gr, all, save')
-    parser.add_argument('--emb-file', default='output/cora_DynRWSG_128_embs.pkl',
+    parser.add_argument('--emb-file', default='output/cora_DynWalks_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
     # -------------------------------------------------method settings-----------------------------------------------------------
-    parser.add_argument('--method', default='DynRWSG', choices=['DynRWSG', 'DynRWSG_random', 'DynRWSG_noacc', 'DeepWalk', 'GraRep', 'HOPE'],
+    parser.add_argument('--method', default='DynWalks', choices=['DynWalks', 'DynWalks_random', 'DynWalks_noacc', 'DeepWalk', 'GraRep', 'HOPE'],
                         help='choices of Network Embedding methods')
-    parser.add_argument('--restart-prob', default=0.2, type=float,
+    parser.add_argument('--restart-prob', default=0.0, type=float,
                         help='restart probability for random walks; raning [0.0, 1.0]')
     parser.add_argument('--update-threshold', default=0.01, type=float,
-                        help='if changes/degree > update_threshold; update node; raning [0.0, 1.0]') 
+                        help='if changes/degree > update_threshold; update node; raning [0.0, 1.0]')
+    parser.add_argument('--limit', default=0.1, type=float,
+                        help='the limit of nodes to be updated at each time step')
+    parser.add_argument('--scheme', default=3, type=float,
+                        help='scheme 1: new+random; scheme 2: new + affected + random; scheme 3: new + affected + diverse_random')
     # walk based methods
     parser.add_argument('--num-walks', default=20, type=int,
                         help='# of random walks of each node')
@@ -85,21 +89,21 @@ def main(args):
             \nThe # of edges @t_init: {nx.number_of_edges(G_dynamic[0])}, and @t_last {nx.number_of_edges(G_dynamic[-1])}')
     t1 = time.time()
     model = None
-    if args.method == 'DynRWSG':
-        from libne import DynRWSG  
-        model = DynRWSG.DynRWSG(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
+    if args.method == 'DynWalks':
+        from libne import DynWalks  
+        model = DynWalks.DynWalks(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
+                                    emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, window=args.window, 
+                                    workers=args.workers, negative=args.negative, seed=args.seed, limit=args.limit, scheme=args.scheme)
+        model.sampling_traning()
+    elif args.method == 'DynWalks_random':
+        from libne import DynWalks_random  
+        model = DynWalks_random.DynWalks_random(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
                                     emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
                                     window=args.window, workers=args.workers, negative=args.negative, seed=args.seed)
         model.sampling_traning()
-    elif args.method == 'DynRWSG_random':
-        from libne import DynRWSG_random  
-        model = DynRWSG_random.DynRWSG_random(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
-                                    emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
-                                    window=args.window, workers=args.workers, negative=args.negative, seed=args.seed)
-        model.sampling_traning()
-    elif args.method == 'DynRWSG_noacc':
-        from libne import DynRWSG_random  
-        model = DynRWSG_random.DynRWSG_random(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
+    elif args.method == 'DynWalks_noacc':
+        from libne import DynWalks_random  
+        model = DynWalks_random.DynWalks_random(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
                                     emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, 
                                     window=args.window, workers=args.workers, negative=args.negative, seed=args.seed)
         model.sampling_traning()

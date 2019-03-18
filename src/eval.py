@@ -1,8 +1,8 @@
 '''
 demo of evaluating node embedding in downsatream task(s)
 
-python src/main.py --method DynRWSG --task save --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynRWSG_128_embs.pkl --num-walks 20 --restart-prob 0.2 --update-threshold 0.1 --emb-dim 128 --workers 24
-python src/eval.py --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynRWSG_128_embs.pkl
+python src/main.py --method DynWalks --task save --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --restart-prob 0.2 --update-threshold 0.1 --emb-dim 128 --workers 24
+python src/eval.py --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl
 
 by Chengbin HOU <chengbin.hou10@foxmail.com>
 '''
@@ -17,7 +17,7 @@ def parse_args():
                         help='graph/network file')
     parser.add_argument('--label', default='data/cora/cora_node_label_dict.pkl',
                         help='node label file')
-    parser.add_argument('--emb-file', default='output/cora_DynRWSG_128_embs.pkl',
+    parser.add_argument('--emb-file', default='output/cora_DynWalks_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
     parser.add_argument('--task', default='all', choices=['lp', 'nc', 'gr', 'all'],
                         help='choices of downstream tasks: lp, nc, gr, all')

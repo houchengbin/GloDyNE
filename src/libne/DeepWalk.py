@@ -51,7 +51,7 @@ class DeepWalk(object):
                t2 = time.time()
                print(f'DeepWalk sampling and traning time: {(t2-t1):.2f}s --> {t+1}/{len(self.G_dynamic)} graphs')
           
-          return self.emb_dicts  # To save memory useage, we can delete DynRWSG model after training
+          return self.emb_dicts  # To save memory useage, we can delete DynWalks model after training
 
      def save_emb(self, path='unnamed_dyn_emb_dicts.pkl'):
           ''' save # emb_dict @ t0, t1, ... to a file using pickle
