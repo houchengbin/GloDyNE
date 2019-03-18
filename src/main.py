@@ -4,7 +4,7 @@ STEP1: prepare data --> (input data using all graphs at a time; but note DynWalk
 STEP2: learn node embeddings -->
 STEP3: downstream evaluations
 
-python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --restart-prob None --update-threshold 0.1 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
+python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --update-threshold 0.1 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
 
 DynWalks hyper-parameters:
 scheme=3, limit=0.1,                        # DynWalks key hyper-parameters
@@ -41,8 +41,8 @@ def parse_args():
     # -------------------------------------------------method settings-----------------------------------------------------------
     parser.add_argument('--method', default='DynWalks', choices=['DynWalks', 'DynWalks_random', 'DynWalks_noacc', 'DeepWalk', 'GraRep', 'HOPE'],
                         help='choices of Network Embedding methods')
-    parser.add_argument('--restart-prob', default=0.0, type=float,
-                        help='restart probability for random walks; raning [0.0, 1.0]')
+    parser.add_argument('--restart-prob', default=None, type=float,
+                        help='restart probability for random walks; raning [0.0, 1.0] or None')
     parser.add_argument('--update-threshold', default=0.1, type=float,
                         help='if changes/degree > update_threshold; update node; raning [0.0, 1.0]')
     parser.add_argument('--limit', default=0.1, type=float,
@@ -161,24 +161,24 @@ def main(args):
     if args.task == 'gr_changed' or args.task == 'all':
         from libne.downstream import grClassifier, gen_test_node_wrt_changes
         for t in range(len(G_dynamic)-1):
-            precision_at_k = 30
+            precision_at_k = 20
             print(f'Current time step @t: {t}')
             print(f'Changed Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
             test_nodes = gen_test_node_wrt_changes(G_dynamic[t],G_dynamic[t+1])
             ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t
-            # ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t])
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
+            # ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t])
 
     if args.task == 'gr' or args.task == 'all':
         from libne.downstream import grClassifier
         for t in range(len(G_dynamic)-1):
-            precision_at_k = 30
+            precision_at_k = 20
             print(f'Current time step @t: {t}')
             print(f'Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
             ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
-            # ds_task.evaluate_precision_k(top_k=precision_at_k)
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k)
-
+            ds_task.evaluate_precision_k(top_k=precision_at_k)
+            # ds_task.evaluate_average_precision_k(top_k=precision_at_k)
+    
     if args.task == 'nc' or args.task == 'all':
         from libne.downstream import ncClassifier
         from sklearn.linear_model import LogisticRegression  # to do... try SVM...

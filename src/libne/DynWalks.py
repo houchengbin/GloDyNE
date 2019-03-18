@@ -130,42 +130,46 @@ def node_selecting_scheme(graph_t0, graph_t1, update_threshold, reservoir_dict, 
      node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
      node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
 
+     t1 = time.time()
+     # for fair comparsion, the number of nodes to be updated are the same for all schemes
      num_node_add = len(node_add)
      num_limit = int(G1.number_of_nodes() * limit)
+     print('num_limit', num_limit)
+     num_limit_half = int(num_limit * 0.5)  # remain some positions for random nodes to increase diversity for global network structure preserving
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, node_affected, node_add, node_del)
      if scheme == 1:
           tabu_nodes = node_add
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_others = max(num_limit-num_node_add, 0)
-          node_update_list = list(np.random.choice(all_nodes, num_others, replace=False)) + node_add
+          num_limit_random = num_limit
+          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add
 
      if scheme == 2:
-          most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, update_threshold, reservoir_dict, node_affected, node_add, node_del)
-          
-          tabu_nodes = list(set(node_add + most_affected_nodes))  # remove repeated nodes
+          tabu_nodes = list(set(node_add + most_affected_nodes))                      # different from scheme 1, we add some most affected nodes
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_others = max(num_limit-num_node_add-len(most_affected_nodes), 0)
-          node_update_list = list(np.random.choice(all_nodes, num_others, replace=False)) + node_add + most_affected_nodes
+          num_limit_random = max(num_limit-len(most_affected_nodes), 0)
+          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add + most_affected_nodes
 
      if scheme == 3:
-          most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, update_threshold, reservoir_dict, node_affected, node_add, node_del)
           most_affected_nbrs = []
           for node in most_affected_nodes:
-               most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) ) # what about nbrs of nbrs? more diversity!
-
-          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # remove repeated nodes
+               most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )           # what about nbrs of nbrs? more diversity!
+          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity!
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_others = max(num_limit-num_node_add-len(most_affected_nodes)-len(most_affected_nbrs), 0)
-          node_update_list = list(np.random.choice(all_nodes, num_others, replace=False)) + node_add + most_affected_nodes
+          num_limit_random = max(num_limit-len(most_affected_nodes), 0)
+          print('num_limit_random',num_limit_random)
+          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add + most_affected_nodes
 
+     t2 = time.time()
+     print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
      print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
      print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
      print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
      return node_update_list, reservoir_dict
+     
 
-
-def select_most_affected_nodes(G0, G1, update_threshold, reservoir_dict, node_affected, node_add, node_del):
-     ''' return most affected nodes as a list to be updated
-          based on the accumulated changes between dynamic graphs
+def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, node_affected, node_add, node_del):
+     ''' return num_limit_return_nodes to be updated
+          based on the ranking of the accumulated changes w.r.t. their local connectivity
      '''
      most_affected_nodes = []
      exist_node_affected = list(set(node_affected) - set(node_add) - set(node_del))  # affected nodes are in both G0 and G1
@@ -177,12 +181,21 @@ def select_most_affected_nodes(G0, G1, update_threshold, reservoir_dict, node_af
                reservoir_dict[node] += changes # accumulated changes
           else:
                reservoir_dict[node] = changes  # newly added changes
-
-          degree = nx.degree(G=G0, nbunch=node) # node inertia; the larger degrees require the larger changes to trigger
-          score = reservoir_dict[node] / degree # may be larger than 1 if the changes are too large w.r.t. its degree
-          if score > update_threshold: # -------------  del it from reservoir & append it to update list -------------
-               most_affected_nodes.append(node)
-               del reservoir_dict[node]
+     
+     if num_limit_return_nodes < len(reservoir_dict):
+          reservoir_dict_copy = reservoir_dict.copy()  # note: the copy of reservoir_dict
+          for node in reservoir_dict_copy.keys():
+               reservoir_dict_copy[node] = reservoir_dict_copy[node]/nx.degree(G=G0, nbunch=node)
+          # worse case O(n) https://docs.scipy.org/doc/numpy/reference/generated/numpy.partition.html
+          # the largest change at num_limit_return_nodes will be returned
+          cutoff = np.partition(list(reservoir_dict_copy.values()), -num_limit_return_nodes, kind='introselect')[-num_limit_return_nodes]
+          for node in reservoir_dict_copy.keys():
+               if reservoir_dict_copy[node] >= cutoff:
+                    most_affected_nodes.append(node)
+                    del reservoir_dict[node] # note: we delete the original reservoir_dict, as the node will be updated
+     else:
+          most_affected_nodes = list(reservoir_dict.keys())
+          reservoir_dict = {} # all nodes in reservoir will be updated; reset whole reservoir
      return most_affected_nodes, reservoir_dict
 
 def select_most_affected_nodes_nbrs(G1, most_affected_nodes):
