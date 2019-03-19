@@ -4,7 +4,7 @@ STEP1: prepare data --> (input data using all graphs at a time; but note DynWalk
 STEP2: learn node embeddings -->
 STEP3: downstream evaluations
 
-python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --update-threshold 0.1 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
+python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
 
 DynWalks hyper-parameters:
 scheme=3, limit=0.1,                        # DynWalks key hyper-parameters

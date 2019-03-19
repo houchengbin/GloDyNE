@@ -1,7 +1,7 @@
 '''
 demo of evaluating node embedding in downsatream task(s)
 
-python src/main.py --method DynWalks --task save --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --restart-prob 0.2 --update-threshold 0.1 --emb-dim 128 --workers 24
+python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
 python src/eval.py --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl
 
 by Chengbin HOU <chengbin.hou10@foxmail.com>
@@ -19,8 +19,8 @@ def parse_args():
                         help='node label file')
     parser.add_argument('--emb-file', default='output/cora_DynWalks_128_embs.pkl',
                         help='node embeddings file; suggest: data_method_dim_embs.pkl')
-    parser.add_argument('--task', default='all', choices=['lp', 'nc', 'gr', 'all'],
-                        help='choices of downstream tasks: lp, nc, gr, all')
+    parser.add_argument('--task', default='save', choices=['lp', 'gc','lp_changed', 'gc_changed', ' nc', 'gr', 'all', 'save'],
+                        help='choices of downstream tasks: lp, nc, gr, all, save')
     args = parser.parse_args()
     return args
 
@@ -35,19 +35,52 @@ def main(args):
     t2 = time.time()
     print(f'STEP1: end loading data; time cost: {(t2-t1):.2f}s')
 
-    # ---------------------------------------STEP2: downstream task(s)-----------------------------------------------
+    # ---------------------------------------STEP2: downstream task-----------------------------------------------
     print('\nSTEP2: start evaluating ......: ')
-    t1 = time.time()   
-    if args.task == 'lp' or args.task == 'all':
+    t1 = time.time()    
+    if args.task == 'lp_changed' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
         for t in range(len(G_dynamic)-1):
             print(f'Current time step @t: {t}')
-            print(f'Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1')
-            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1])
+            print(f'Changed Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1')
+            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
             test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
             test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
             ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
             ds_task.evaluate_auc(test_edges, test_label)
+
+    if args.task == 'lp' or args.task == 'all':
+        from libne.downstream import lpClassifier, gen_test_edge_wrt_changes_plus_others
+        for t in range(len(G_dynamic)-1):
+            print(f'Current time step @t: {t}')
+            print(f'Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1')
+            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes_plus_others(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
+            test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
+            test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
+            ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
+            ds_task.evaluate_auc(test_edges, test_label)
+            
+    if args.task == 'gr_changed' or args.task == 'all':
+        from libne.downstream import grClassifier, gen_test_node_wrt_changes
+        for t in range(len(G_dynamic)-1):
+            precision_at_k = 20
+            print(f'Current time step @t: {t}')
+            print(f'Changed Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
+            test_nodes = gen_test_node_wrt_changes(G_dynamic[t],G_dynamic[t+1])
+            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
+            # ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=test_nodes, rc_graph=G_dynamic[t])
+
+    if args.task == 'gr' or args.task == 'all':
+        from libne.downstream import grClassifier
+        for t in range(len(G_dynamic)-1):
+            precision_at_k = 20
+            print(f'Current time step @t: {t}')
+            print(f'Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
+            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
+            ds_task.evaluate_precision_k(top_k=precision_at_k)
+            # ds_task.evaluate_average_precision_k(top_k=precision_at_k)
+    
     if args.task == 'nc' or args.task == 'all':
         from libne.downstream import ncClassifier
         from sklearn.linear_model import LogisticRegression  # to do... try SVM...
@@ -65,17 +98,9 @@ def main(args):
                 ds_task.split_train_evaluate(X, Y, train_precent=0.5)
         except:
             print(f'ground truth label file not exist; not support node classification task')
-    if args.task == 'gr' or args.task == 'all':
-        from libne.downstream import grClassifier
-        for t in range(len(G_dynamic)):
-            precision_at_k = 50
-            print(f'Current time step @t: {t}')
-            print(f'Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
-            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t
-            # ds_task.evaluate_precision_k(top_k=precision_at_k)
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k)
+
     t2 = time.time()
-    print(f'STEP2: end evaluating; time cost: {(t2-t1):.2f}s')
+    print(f'STEP3: end evaluating; time cost: {(t2-t1):.2f}s')
 
 
 if __name__ == '__main__':

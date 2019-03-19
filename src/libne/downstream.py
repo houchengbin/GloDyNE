@@ -156,16 +156,16 @@ class grClassifier(object):
             for i in range(size):
                 pk_list.append(ranking_precision_score(self.adj_mat[i], self.score_mat[i], k=top_k)) # ranking_precision_score
         else: # only eval on node_list
-            if len(node_list) == 0:
+            if len(node_list) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
+                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+                pk_list = 1.00
+            else:
                 node_idx = node_id2idx(rc_graph, node_list)
                 new_adj_mat = [self.adj_mat[i] for i in node_idx]
                 new_score_mat = [self.score_mat[i] for i in node_idx]
                 size = len(new_adj_mat)
                 for i in range(size):
                     pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
-            else: # if there is no testing data (dyn networks not changed), set auc to 1
-                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
-                pk_list = 1.00
         print("ranking_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
     def evaluate_average_precision_k(self, top_k, node_list=None, rc_graph=None):
@@ -177,12 +177,16 @@ class grClassifier(object):
             for i in range(size):
                 pk_list.append(average_precision_score(self.adj_mat[i], self.score_mat[i], k=top_k)) # average_precision_score
         else: # only eval on node_list
-            node_idx = node_id2idx(rc_graph, node_list)
-            new_adj_mat = [self.adj_mat[i] for i in node_idx]
-            new_score_mat = [self.score_mat[i] for i in node_idx]
-            size = len(new_adj_mat)
-            for i in range(size):
-                pk_list.append(average_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
+            if len(node_list) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
+                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+                pk_list = 1.00
+            else:
+                node_idx = node_id2idx(rc_graph, node_list)
+                new_adj_mat = [self.adj_mat[i] for i in node_idx]
+                new_score_mat = [self.score_mat[i] for i in node_idx]
+                size = len(new_adj_mat)
+                for i in range(size):
+                    pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
         print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
 def node_id2idx(graph, node_id):
