@@ -91,7 +91,7 @@ def main(args):
     model = None
     if args.method == 'DynWalks':
         from libne import DynWalks  
-        model = DynWalks.DynWalks(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold, 
+        model = DynWalks.DynWalks(G_dynamic=G_dynamic, restart_prob=args.restart_prob, update_threshold=args.update_threshold,
                                     emb_dim=args.emb_dim, num_walks=args.num_walks, walk_length=args.walk_length, window=args.window, 
                                     workers=args.workers, negative=args.negative, seed=args.seed, limit=args.limit, scheme=args.scheme)
         model.sampling_traning()

@@ -32,7 +32,7 @@ class lpClassifier(object):
             Y_probs.append((score + 1) / 2.0)
             # in sklearn roc... which yields the same reasult
         if len(Y_true) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
-            print('------- NOTE: two graphs do not have any change -> no testing data -> set auc to 1......')
+            print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
             auc = 1.0
         else:
             auc = auc_score(y_true=Y_true, y_score=Y_probs)
@@ -63,8 +63,8 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1):
     edge_add = edge_add - set(edge_add_unseen_node)
     #print('len(edge_add)', len(edge_add))
 
-    pos_edges_with_label = [list(item+(1,)) for item in edge_add]
     neg_edges_with_label = [list(item+(0,)) for item in edge_del]
+    pos_edges_with_label = [list(item+(1,)) for item in edge_add]
     if len(edge_add) > len(edge_del):
         num = len(edge_add) - len(edge_del)
         i = 0
@@ -85,6 +85,7 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1):
                 break
     else: # len(edge_add) == len(edge_del)
         pass
+    print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
 
 def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
@@ -99,6 +100,16 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
         G1.remove_node(node)
     num_other_edges = int(G1.number_of_nodes() * percentage) # if percentage=1.0
                                                              # it is likely to generate one pos_link and one neg_link per node
+
+    exist_neg_edges = [i[:-1] for i in neg_edges_with_label]  #remove label
+    i = 0
+    for edge in nx.non_edges(G1):
+        if edge not in exist_neg_edges:
+            neg_edges_with_label.append(list(edge+(0,)))
+            i += 1
+        if i >= num_other_edges:
+            break
+
     exist_pos_edges = [i[:-1] for i in pos_edges_with_label] # remove label
     i = 0
     for edge in nx.edges(G1):
@@ -107,16 +118,7 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
             i += 1
         if i >= num_other_edges:
             break
-
-    exist_neg_edges = [i[:-1] for i in neg_edges_with_label]  #remove label
-    i = 0
-    for edge in nx.non_edges(G1):
-        if edge not in exist_neg_edges:
-            neg_edges_with_label.append(list(edge+(1,)))
-            i += 1
-        if i >= num_other_edges:
-            break
-
+    print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
 
 
@@ -154,12 +156,16 @@ class grClassifier(object):
             for i in range(size):
                 pk_list.append(ranking_precision_score(self.adj_mat[i], self.score_mat[i], k=top_k)) # ranking_precision_score
         else: # only eval on node_list
-            node_idx = node_id2idx(rc_graph, node_list)
-            new_adj_mat = [self.adj_mat[i] for i in node_idx]
-            new_score_mat = [self.score_mat[i] for i in node_idx]
-            size = len(new_adj_mat)
-            for i in range(size):
-                pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
+            if len(node_list) == 0:
+                node_idx = node_id2idx(rc_graph, node_list)
+                new_adj_mat = [self.adj_mat[i] for i in node_idx]
+                new_score_mat = [self.score_mat[i] for i in node_idx]
+                size = len(new_adj_mat)
+                for i in range(size):
+                    pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
+            else: # if there is no testing data (dyn networks not changed), set auc to 1
+                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+                pk_list = 1.00
         print("ranking_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
     def evaluate_average_precision_k(self, top_k, node_list=None, rc_graph=None):
@@ -202,6 +208,7 @@ def gen_test_node_wrt_changes(graph_t0, graph_t1):
 
     unseen_nodes = list( set(G1.nodes()) - set(G0.nodes()) ) # unique
     test_nodes = [node for node in node_affected if node not in unseen_nodes] # remove unseen nodes
+    print('---- len(test_nodes)', len(test_nodes))
     return test_nodes
 
 def gen_test_node_wrt_changes_plus_others(graph_t0, graph_t1):
