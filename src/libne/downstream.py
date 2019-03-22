@@ -124,13 +124,13 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
 
 
 
-
 # --------------------------------------------------------------------------------------
-# ------------- graph reconstruction task based on precision@k score -------------------
+# ------------- graph reconstruction task based on precision@k score  ====fast version, but require large ROM====
 # --------------------------------------------------------------------------------------
 from .utils import pairwise_similarity, ranking_precision_score, average_precision_score
 class grClassifier(object):
     def __init__(self, emb_dict, rc_graph):
+        self.graph = rc_graph
         self.embeddings = emb_dict
         self.adj_mat, self.score_mat = self.gen_test_data_wrt_graph_truth(graph=rc_graph)
     
@@ -147,7 +147,7 @@ class grClassifier(object):
         score_mat = pairwise_similarity(emb_mat, type='cosine') # n-by-n corresponding to adj_mat
         return np.array(adj_mat), np.array(score_mat)
 
-    def evaluate_precision_k(self, top_k, node_list=None, rc_graph=None):
+    def evaluate_precision_k(self, top_k, node_list=None):
         ''' Precision at rank k; to be merged with average_precision_score()
         '''
         pk_list = []
@@ -160,7 +160,7 @@ class grClassifier(object):
                 print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
                 pk_list = 1.00
             else:
-                node_idx = node_id2idx(rc_graph, node_list)
+                node_idx = node_id2idx(self.graph, node_list)
                 new_adj_mat = [self.adj_mat[i] for i in node_idx]
                 new_score_mat = [self.score_mat[i] for i in node_idx]
                 size = len(new_adj_mat)
@@ -168,7 +168,7 @@ class grClassifier(object):
                     pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
         print("ranking_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
-    def evaluate_average_precision_k(self, top_k, node_list=None, rc_graph=None):
+    def evaluate_average_precision_k(self, top_k, node_list=None):
         ''' Average precision at rank k; to be merged with evaluate_precision_k()
         '''
         pk_list = []
@@ -181,7 +181,7 @@ class grClassifier(object):
                 print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
                 pk_list = 1.00
             else:
-                node_idx = node_id2idx(rc_graph, node_list)
+                node_idx = node_id2idx(self.graph, node_list)
                 new_adj_mat = [self.adj_mat[i] for i in node_idx]
                 new_score_mat = [self.score_mat[i] for i in node_idx]
                 size = len(new_adj_mat)
@@ -189,8 +189,73 @@ class grClassifier(object):
                     pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
         print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
+# --------------------------------------------------------------------------------------
+# ------------- graph reconstruction task based on precision@k score ==== memory saving, batch version, but slow ====
+# --------------------------------------------------------------------------------------
+from .utils import pairwise_similarity, ranking_precision_score, average_precision_score
+class grClassifier_batch(object):
+    def __init__(self, emb_dict, rc_graph):
+        self.embeddings = emb_dict
+        self.graph = rc_graph
+
+    def evaluate_precision_k(self, top_k, node_list=None):
+        ''' Mean Precision at rank k
+        '''
+        G = self.graph.copy()
+        adj_mat = nx.to_numpy_array(G=G, nodelist=G.nodes()) # ordered by G.nodes(); n-by-n
+        adj_mat = np.where(adj_mat==0, 0, 1) # vectorized implementation weighted -> unweighted if necessary; if memory error, try sparse matrix
+        emb_mat = [self.embeddings[node] for node in G.nodes()]
+
+        pk_list = []
+        num_nodes = len(G.nodes())
+        norm_vec = np.sqrt(np.einsum('ij,ij->i', emb_mat, emb_mat)) # norm of each row of emb_mat  # https://stackoverflow.com/questions/7741878/how-to-apply-numpy-linalg-norm-to-each-row-of-a-matrix
+        if node_list == None: # eval all nodes
+            for i in range(num_nodes): # due to memory issue, we have to eval them one by one...
+                score = [np.inner(emb_mat[i],emb_mat[j])/(norm_vec[i]*norm_vec[j]) for j in range(num_nodes)] # cos of i w.r.t each j
+                truth = adj_mat[i]
+                pk_list.append(ranking_precision_score(y_true=truth, y_score=score, k=top_k))
+        else: # only eval on node_list
+            if len(node_list) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
+                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+                pk_list = 1.00
+            else:
+                node_idx = node_id2idx(G, node_list)
+                for i in node_idx: # only eval on node_list
+                    score = [np.inner(emb_mat[i],emb_mat[j])/(norm_vec[i]*norm_vec[j]) for j in range(num_nodes)] # cos of i w.r.t each j
+                    truth = adj_mat[i]
+                    pk_list.append(ranking_precision_score(y_true=truth, y_score=score, k=top_k))
+        print("ranking_precision_score=", "{:.9f}".format(np.mean(pk_list)))
+
+    def evaluate_average_precision_k(self, top_k, node_list=None):
+        ''' Mean Average Precision at rank k
+        '''
+        G = self.graph.copy()
+        adj_mat = nx.to_numpy_array(G=G, nodelist=G.nodes()) # ordered by G.nodes(); n-by-n
+        adj_mat = np.where(adj_mat==0, 0, 1) # vectorized implementation weighted -> unweighted if necessary; if memory error, try sparse matrix
+        emb_mat = [self.embeddings[node] for node in G.nodes()]
+
+        pk_list = []
+        num_nodes = len(G.nodes())
+        norm_vec = np.sqrt(np.einsum('ij,ij->i', emb_mat, emb_mat)) # norm of each row of emb_mat  # https://stackoverflow.com/questions/7741878/how-to-apply-numpy-linalg-norm-to-each-row-of-a-matrix
+        if node_list == None: # eval all nodes
+            for i in range(num_nodes): # due to memory issue, we have to eval them one by one...
+                score = [np.inner(emb_mat[i],emb_mat[j])/(norm_vec[i]*norm_vec[j]) for j in range(num_nodes)] # cos of i w.r.t each j
+                truth = adj_mat[i]
+                pk_list.append(average_precision_score(y_true=truth, y_score=score, k=top_k))
+        else: # only eval on node_list
+            if len(node_list) == 0: # if there is no testing data (dyn networks not changed), set auc to 1
+                print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+                pk_list = 1.00
+            else:
+                node_idx = node_id2idx(G, node_list)
+                for i in node_idx: # only eval on node_list
+                    score = [np.inner(emb_mat[i],emb_mat[j])/(norm_vec[i]*norm_vec[j]) for j in range(num_nodes)] # cos of i w.r.t each j
+                    truth = adj_mat[i]
+                    pk_list.append(average_precision_score(y_true=truth, y_score=score, k=top_k))
+        print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
+
 def node_id2idx(graph, node_id):
-    G = graph.copy()
+    G = graph
     all_nodes = list(G.nodes())
     node_idx = []
     for node in node_id:
@@ -219,7 +284,6 @@ def gen_test_node_wrt_changes_plus_others(graph_t0, graph_t1):
     ''' currently, we reconstruct whole graph; but todo...
     '''
     pass
-
 
 
 
