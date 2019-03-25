@@ -138,7 +138,7 @@ def main(args):
     del model  # to save memory
     if args.task == 'lp_changed' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
-        for t in range(len(G_dynamic)-1):
+        for t in range(len(emb_dicts)-1):
             print(f'Current time step @t: {t}')
             print(f'Changed Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1')
             pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
@@ -149,7 +149,7 @@ def main(args):
 
     if args.task == 'lp' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes_plus_others
-        for t in range(len(G_dynamic)-1):
+        for t in range(len(emb_dicts)-1):
             print(f'Current time step @t: {t}')
             print(f'Link Prediction task by AUC score: use current emb @t to predict **future** changed links @t+1')
             pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes_plus_others(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
@@ -160,7 +160,7 @@ def main(args):
             
     if args.task == 'gr_changed' or args.task == 'all':
         from libne.downstream import grClassifier, gen_test_node_wrt_changes
-        for t in range(len(G_dynamic)-1):
+        for t in range(len(emb_dicts)-1):
             precision_at_k = 20
             print(f'Current time step @t: {t}')
             print(f'Changed Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
@@ -172,7 +172,7 @@ def main(args):
 
     if args.task == 'gr' or args.task == 'all':
         from libne.downstream import grClassifier
-        for t in range(len(G_dynamic)-1):
+        for t in range(len(emb_dicts)-1):
             precision_at_k = 20
             print(f'Current time step @t: {t}')
             print(f'Graph Reconstruction by MAP @{precision_at_k} task: use current emb @t to reconstruct **current** graph @t')
