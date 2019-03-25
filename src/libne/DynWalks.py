@@ -120,9 +120,17 @@ class DynWalks(object):
 
 def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=3):
      ''' select nodes to be updated
+          G0: previous graph @ t-1;
+          G1: current graph  @ t;
+          reservoir_dict: will be always maintained in ROM
+          limit: fix the number of node --> the percentage of nodes of a network to be updated (exclude new nodes)
+
+          scheme 0: new nodes (DeppWalk-SGNE dynamic version)
           scheme 1: new nodes + random nodes 
           scheme 2: new nodes + most affected nodes + random nodes
-          scheme 3: new nodes + most affected nodes + diverse random nodes (exclude new or affected and their neighbors) 
+          scheme 3: new nodes + most affected nodes + random nodes (much diverse?; also exclude most affected their neighbors) 
+          scheme 4: new nodes + most affected nodes + random nodes that will be selected if with large degree
+          scheme 5: new nodes + most affected nodes + random nodes that will be selected if with small degree 
      '''
      G0 = graph_t0.copy()
      G1 = graph_t1.copy()
@@ -137,34 +145,65 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      exist_node_affected = list(set(node_affected) - set(node_add) - set(node_del))  # affected nodes are in both G0 and G1
 
      t1 = time.time()
-     # for fair comparsion, the number of nodes to be updated are the same for all schemes
+     # for fair comparsion, the number of nodes to be updated are the same for schemes 1, 2, 3, 4, 5 whereas scheme 0 is DeepWalk-SGNE
      num_limit = int(G1.number_of_nodes() * limit)
      print('num_limit', num_limit)
-     num_limit_half = int(num_limit * 0.5)  # remain some positions for random nodes to increase diversity for global network structure preserving
-     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected)
+     # remain some positions for random nodes to increase diversity for preserving global network structure
+     num_limit_half = int(num_limit * 0.5)
+     # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected) 
+     if scheme == 0:
+          print('scheme == 0')
+          node_update_list = node_add
+
      if scheme == 1:
           print('scheme == 1')
           tabu_nodes = node_add
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
           num_limit_random = num_limit
-          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add
 
      if scheme == 2:
           print('scheme == 2')
-          tabu_nodes = list(set(node_add + most_affected_nodes))                      # different from scheme 1, we add some most affected nodes
+          tabu_nodes = list(set(node_add + most_affected_nodes))      # different from scheme 1, we add some most affected nodes
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = max(num_limit-len(most_affected_nodes), 0)
-          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add + most_affected_nodes
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add + most_affected_nodes
 
      if scheme == 3:
           print('scheme == 3')
           most_affected_nbrs = []
           for node in most_affected_nodes:
                most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )           # what about nbrs of nbrs? more diversity!
-          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity!
+          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = max(num_limit-len(most_affected_nodes), 0)
-          node_update_list = list(np.random.choice(all_nodes, num_limit_random, replace=False)) + node_add + most_affected_nodes
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add + most_affected_nodes
+
+     if scheme == 4:
+          print('scheme == 4')
+          tabu_nodes = list(set(node_add + most_affected_nodes))
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
+          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))  #more likely to choose node with larger degree
+          node_update_list = random_nodes + node_add + most_affected_nodes
+
+     if scheme == 5:
+          print('scheme == 5')
+          tabu_nodes = list(set(node_add + most_affected_nodes))
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
+          reverser = sum(all_nodes_degrees)                                                           # inverse prob dist; a naive imp
+          all_nodes_degrees = [reverser-all_nodes_degrees[i] for i in range(len(all_nodes_degrees))]  # inverse prob dist; a naive imp
+          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist)) #more likely to choose node with smaller degree
+          node_update_list = random_nodes + node_add + most_affected_nodes
 
      t2 = time.time()
      print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
