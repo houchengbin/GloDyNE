@@ -1,12 +1,33 @@
 '''
-add DynWalks_noacc method
-DynWalks: update new nodes + selected most affected nodes from old nodes
-DynWalks_noacc: update new nodes + selected most affected nodes (not consider accumulated changes) from old nodes
+A Dynamic Network Embedding Method: DynWalks
+"sampling by Randow Walks with restart and training by Skip-Gram with negative sampling model"
+by Chengbin HOU & Han ZHANG 2019
 
-Aim: to show the effectiveness of "accumulated changes"
-core idea: accumulated changes store in reservoir -> reset reservoir every time
+---------------------------------
+G0: graph at previous time step
+G1: graph at current time step
+---------------------------------
 
-by Chengbin Hou 2019
+todo:
+1) reset deledted nodes or continue traning
+2) what about the deleted nodes while doing negative sampling
+3) currently accept fixed size of dynamic graphs; but it would be better to accept streaming graphs/edges;
+     OR accept previous DynWalks model and continue traning
+4) parallel random walk
+
+
+# Regarding the novelty, we may need focus on the following points------------------------------------------------------------------------------------------------------------------------
+# Method 1 -------- our novelty depends on 1) and 2)
+# 1) how to select m most affected nodes -> further reduce complexity without lossing too much accuracy (by considering accumulated diff in some kind of reservoir using degree or else)
+# 2) how to random walk start from those m nodes -> random walks with restart, if prob=0 -> naive random walk; if prob=1 -> always stay at starting node; try to tune prob
+# 3) once obtain sequences for each of m nodes, shall we directly update OR reset them and then update? [do not waste too much time]
+# 4) the hyper-parameters of Word2Vec SGNE model especially window, negative, iter [do not waste too much time]
+# 5) when to restart? I think we only need to propose our general offline and online framework. when to restart is out futher work... [ignore for a moment]
+
+# Method 2 -------- [ignore for a moment] [ignore for a moment] [ignore for a moment]
+# 1) based on the diff between G1 and G0 -> added and deleted edges/nodes
+# 2) way1: based on the changed edges/nodes -> handcraft sequences/sentences -> feed to Word2Vec [idea: synthetic sequences; still based on Python Gensim]
+# 2) way2: feed the changed edges/nodes -> feed to SGNS [idea: code SGNE from scratch; using Python TensorFlow]
 '''
 
 import time
@@ -24,11 +45,11 @@ from .utils import edge_s1_minus_s0, unique_nodes_from_edge_set
 
 
 class DynWalks_noacc(object):
-     def __init__(self, G_dynamic, restart_prob=0.2, update_threshold=0.1, emb_dim=128, 
-                    num_walks=20, walk_length=80, window=10, workers=20, negative=5, seed=2019):
+     def __init__(self, G_dynamic, restart_prob=0.2, update_threshold=0.1, emb_dim=128, num_walks=20, walk_length=80, 
+                    window=10, workers=20, negative=5, seed=2019, limit=0.1, scheme=3):
           self.G_dynamic = G_dynamic.copy()  # a series of dynamic graphs
           self.emb_dim = emb_dim   # node emb dimensionarity
-          self.update_threshold = update_threshold  # if 0, update emb for all affected nodes
+          self.update_threshold = update_threshold # NOT used anymore, as limit will automatically adjust update_threshold [will be deleted later]
           self.restart_prob = restart_prob  # restart probability for random walks
           self.num_walks = num_walks  # num of walks start from each node
           self.walk_length = walk_length  # walk length for each walk
@@ -36,6 +57,9 @@ class DynWalks_noacc(object):
           self.workers = workers  # Skip-Gram parameter
           self.negative = negative  # Skip-Gram parameter
           self.seed = seed  # Skip-Gram parameter
+
+          self.scheme = scheme
+          self.limit = limit
 
           self.emb_dicts = [] # emb_dict @ t0, t1, ...; len(self.emb_dicts) == len(self.G_dynamic)
           self.reservoir = {} # {nodeID: num of affected, ...}
@@ -59,7 +83,7 @@ class DynWalks_noacc(object):
                else:      # online adapting --------------------
                     G0 = self.G_dynamic[t-1]  # previous graph
                     G1 = self.G_dynamic[t]    # current graph
-                    node_update_list, self.reservoir = most_affected_nodes(graph_t0=G0, graph_t1=G1, update_threshold=self.update_threshold, reservoir_dict=self.reservoir) # note: self.reservoir for accumulated changes
+                    node_update_list, self.reservoir = node_selecting_scheme(graph_t0=G0, graph_t1=G1, reservoir_dict=self.reservoir, limit=self.limit, scheme=self.scheme)
                     sentences = simulate_walks(nx_graph=G1, num_walks=self.num_walks, walk_length=self.walk_length, restart_prob=self.restart_prob, affected_nodes=node_update_list)
                     sentences = [[str(j) for j in i] for i in sentences]
                     w2v.build_vocab(sentences=sentences, update=True) # online update
@@ -94,59 +118,144 @@ class DynWalks_noacc(object):
 # ---------- utils: most_affected_nodes, simulate_walks, random_walk, random_walk_restart ------------
 # ----------------------------------------------------------------------------------------------------
 
-def most_affected_nodes(graph_t0, graph_t1, update_threshold, reservoir_dict):
-     ''' return most affected nodes as a list to be updated
-          based on the accumulated changes between dynamic graphs
+def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=3):
+     ''' select nodes to be updated
+          G0: previous graph @ t-1;
+          G1: current graph  @ t;
+          reservoir_dict: will be always maintained in ROM
+          limit: fix the number of node --> the percentage of nodes of a network to be updated (exclude new nodes)
+
+          scheme 0: new nodes (DeppWalk-SGNE dynamic version)
+          scheme 1: new nodes + random nodes 
+          scheme 2: new nodes + most affected nodes + random nodes
+          scheme 3: new nodes + most affected nodes + random nodes (much diverse?; also exclude most affected their neighbors) 
+          scheme 4: new nodes + most affected nodes + random nodes that will be selected if with large degree
+          scheme 5: new nodes + most affected nodes + random nodes that will be selected if with small degree 
      '''
      G0 = graph_t0.copy()
      G1 = graph_t1.copy()
-
      edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges())) # one may directly use streaming added edges if possible
-     # print('---> edges added length: ', len(edge_add))
      edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges())) # one may directly use streaming added edges if possible
-     # print('---> edges deleted length: ', len(edge_del))
 
      node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add) # unique
      node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del) # unique
      node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del)) # unique
-     # print('---> nodes affected; length: ', len(node_affected))
-     
      node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
-     # print('---> node added; length: ', len(node_add))
-     # print('---> node added: ', node_add)
      node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
-     # print('---> node deleted; length: ', len(node_del))
-     # print('---> node deleted: ', node_del)
-
-     # method 1: all affected nodes in G1
-     # if len(node_del) > 0: # these nodes are deleted in G1, so no need to update their embeddings
-     #     node_update_list = list(set(node_affected) - set(node_del))
-          
-     # method 2: m most affected nodes in G1 based on (# of affected time on a node)/(its node degree)
-     node_update_list = node_add.copy() # newly added (unseen) nodes mush be to update
      exist_node_affected = list(set(node_affected) - set(node_add) - set(node_del))  # affected nodes are in both G0 and G1
+
+     t1 = time.time()
+     # for fair comparsion, the number of nodes to be updated are the same for schemes 1, 2, 3, 4, 5 whereas scheme 0 is DeepWalk-SGNE
+     num_limit = int(G1.number_of_nodes() * limit)
+     print('num_limit', num_limit)
+     # remain some positions for random nodes to increase diversity for preserving global network structure
+     num_limit_half = int(num_limit * 0.5)
+     # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected)
+
+     node_update_list = []   # all the nodes to be updated 
+     if scheme == 0:
+          print('scheme == 0')
+          node_update_list = node_add
+
+     if scheme == 1:
+          print('scheme == 1')
+          tabu_nodes = node_add
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          num_limit_random = num_limit
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add
+
+     if scheme == 2:
+          print('scheme == 2')
+          tabu_nodes = list(set(node_add + most_affected_nodes))      # different from scheme 1, we add some most affected nodes
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add + most_affected_nodes
+
+     if scheme == 3:
+          print('scheme == 3')
+          most_affected_nbrs = []
+          for node in most_affected_nodes:
+               most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )           # what about nbrs of nbrs? more diversity!
+          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          node_update_list = random_nodes + node_add + most_affected_nodes
+
+     if scheme == 4:
+          print('scheme == 4')
+          tabu_nodes = list(set(node_add + most_affected_nodes))
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
+          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()  #more likely to choose node with larger degree
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
+          node_update_list = random_nodes + node_add + most_affected_nodes
+
+     if scheme == 5:
+          print('scheme == 5')
+          tabu_nodes = list(set(node_add + most_affected_nodes))
+          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
+          inverse_all_nodes_degrees = 1.0 / np.array(all_nodes_degrees)
+          degree_dist = np.array(inverse_all_nodes_degrees) / np.array(inverse_all_nodes_degrees).sum() #more likely to choose node with smaller degree
+          num_limit_random = num_limit-len(most_affected_nodes)
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
+          node_update_list = random_nodes + node_add + most_affected_nodes
+     
+     reservoir_key_list = list(reservoir_dict.keys())
+     for node in node_update_list:
+          if node in reservoir_key_list:
+               del reservoir_dict[node]  # if updated, delete it
+
+     t2 = time.time()
+     print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
+     print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
+     print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
+     print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
+     return node_update_list, reservoir_dict
+     
+
+def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, exist_node_affected):
+     ''' return num_limit_return_nodes to be updated
+          based on the ranking of the accumulated changes w.r.t. their local connectivity
+          NOTE: improve code by removing reservoir... TODO...
+     '''
+     reservoir_dict = {}      # NOTE: reset reservoir --> no accumulated changes
+     print('DynWalks no acc case; len(reservoir_dict) should be zero:', len(reservoir_dict))
+     most_affected_nodes = []
      for node in exist_node_affected:
           nbrs_set1 = set(nx.neighbors(G=G1, n=node))
           nbrs_set0 = set(nx.neighbors(G=G0, n=node))
           changes = len( nbrs_set1.union(nbrs_set0) - nbrs_set1.intersection(nbrs_set0) )
-          if node in reservoir_dict.keys():
+          if node in reservoir_dict.keys():    # NOTE: always false! in no acc case!
                reservoir_dict[node] += changes # accumulated changes
-               print('ERROR EXIT, plz check, do not consider accumulated changes')
-               exit(0)
-          else:
+          else:                                # NOTE: always true! in no acc case!
                reservoir_dict[node] = changes  # newly added changes
+               
+     if num_limit_return_nodes < len(exist_node_affected):
+          reservoir_dict_score = {}
+          for node in exist_node_affected:
+               reservoir_dict_score[node] = reservoir_dict[node] / G0.degree[node]
+          # worse case O(n) https://docs.scipy.org/doc/numpy/reference/generated/numpy.partition.html
+          # the largest change at num_limit_return_nodes will be returned
+          cutoff_score = np.partition(list(reservoir_dict_score.values()), -num_limit_return_nodes, kind='introselect')[-num_limit_return_nodes]
+          for node in reservoir_dict_score.keys():
+               if reservoir_dict_score[node] >= cutoff_score:
+                    most_affected_nodes.append(node)
+     else:
+          most_affected_nodes = exist_node_affected
+     reservoir_dict = {}      # NOTE: reset reservoir --> no accumulated changes
+     return most_affected_nodes, reservoir_dict
 
-          degree = nx.degree(G=G0, nbunch=node) # node inertia; the larger degrees require the larger changes to trigger
-          score = reservoir_dict[node] / degree # may be larger than 1 if the changes are too large w.r.t. its degree
-          if score > update_threshold: # -------------  del it from reservoir & append it to update list -------------
-               node_update_list.append(node)
-               del reservoir_dict[node]
-     print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
-     print(f'all newly added nodes must be updated, {len(node_add)} but ..... ')
-     print(f'num of nodes deleted {len(node_del)}, affected {len(node_affected)}, to be updated {len(node_update_list)}')
-
-     reservoir_dict = {} # reset reservoir --> do not consider accumulated changes
-     return node_update_list, reservoir_dict
+def select_most_affected_nodes_nbrs(G1, most_affected_nodes):
+     most_affected_nbrs = []
+     for node in most_affected_nodes:
+          most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )
+     return list(set(most_affected_nbrs)) #return a list without repeated items
 
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
