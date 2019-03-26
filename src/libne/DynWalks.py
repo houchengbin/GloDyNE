@@ -190,9 +190,9 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           tabu_nodes = list(set(node_add + most_affected_nodes))
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
           all_nodes_degrees = [G1.degree[node] for node in all_nodes]
-          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()
+          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()  #more likely to choose node with larger degree
           num_limit_random = num_limit-len(most_affected_nodes)
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))  #more likely to choose node with larger degree
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
           node_update_list = random_nodes + node_add + most_affected_nodes
 
      if scheme == 5:
@@ -200,11 +200,10 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           tabu_nodes = list(set(node_add + most_affected_nodes))
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
           all_nodes_degrees = [G1.degree[node] for node in all_nodes]
-          reverser = sum(all_nodes_degrees)                                                           # inverse prob dist; a naive imp
-          all_nodes_degrees = [reverser-all_nodes_degrees[i] for i in range(len(all_nodes_degrees))]  # inverse prob dist; a naive imp
-          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()
+          inverse_all_nodes_degrees = 1.0 / np.array(all_nodes_degrees)
+          degree_dist = np.array(inverse_all_nodes_degrees) / np.array(inverse_all_nodes_degrees).sum() #more likely to choose node with smaller degree
           num_limit_random = num_limit-len(most_affected_nodes)
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist)) #more likely to choose node with smaller degree
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
           node_update_list = random_nodes + node_add + most_affected_nodes
      
      reservoir_key_list = list(reservoir_dict.keys())
