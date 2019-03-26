@@ -151,7 +151,9 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      # remain some positions for random nodes to increase diversity for preserving global network structure
      num_limit_half = int(num_limit * 0.5)
      # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
-     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected) 
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected)
+
+     node_update_list = []   # all the nodes to be updated 
      if scheme == 0:
           print('scheme == 0')
           node_update_list = node_add
@@ -204,6 +206,11 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           num_limit_random = num_limit-len(most_affected_nodes)
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist)) #more likely to choose node with smaller degree
           node_update_list = random_nodes + node_add + most_affected_nodes
+     
+     reservoir_key_list = list(reservoir_dict.keys())
+     for node in node_update_list:
+          if node in reservoir_key_list:
+               del reservoir_dict[node]  # if updated, delete it
 
      t2 = time.time()
      print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
@@ -237,11 +244,8 @@ def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, e
           for node in reservoir_dict_score.keys():
                if reservoir_dict_score[node] >= cutoff_score:
                     most_affected_nodes.append(node)
-                    del reservoir_dict[node] # note: we delete the original reservoir_dict, as the node will be updated
      else:
           most_affected_nodes = exist_node_affected
-          for node in exist_node_affected:
-               del reservoir_dict[node]
      return most_affected_nodes, reservoir_dict
 
 def select_most_affected_nodes_nbrs(G1, most_affected_nodes):
