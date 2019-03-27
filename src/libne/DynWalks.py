@@ -233,17 +233,21 @@ def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, e
           else:
                reservoir_dict[node] = changes  # newly added changes
                
-     if num_limit_return_nodes < len(exist_node_affected):
+     if len(exist_node_affected) > num_limit_return_nodes:
           reservoir_dict_score = {}
           for node in exist_node_affected:
                reservoir_dict_score[node] = reservoir_dict[node] / G0.degree[node]
           # worse case O(n) https://docs.scipy.org/doc/numpy/reference/generated/numpy.partition.html
           # the largest change at num_limit_return_nodes will be returned
           cutoff_score = np.partition(list(reservoir_dict_score.values()), -num_limit_return_nodes, kind='introselect')[-num_limit_return_nodes]
+          cnt = 0
           for node in reservoir_dict_score.keys():
-               if reservoir_dict_score[node] >= cutoff_score:
+               if reservoir_dict_score[node] >= cutoff_score: # fix bug: there might be multiple equal cutoff_score nodes...
                     most_affected_nodes.append(node)
-     else:
+                    cnt += 1
+                    if cnt == num_limit_return_nodes:         # fix bug: we need exactly the number of limit return nodes...
+                         break
+     else: # NOTE: if most_affected_nodes are less than half_limit, additional random nodes will be automatically sampled for compensation
           most_affected_nodes = exist_node_affected
      return most_affected_nodes, reservoir_dict
 
