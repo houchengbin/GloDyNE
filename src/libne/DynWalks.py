@@ -1,6 +1,5 @@
 '''
 A Dynamic Network Embedding Method: DynWalks
-"sampling by Randow Walks with restart and training by Skip-Gram with negative sampling model"
 by Chengbin HOU & Han ZHANG 2019
 
 ---------------------------------
@@ -75,7 +74,7 @@ class DynWalks(object):
           for t in range(len(self.G_dynamic)):
                t1 = time.time()
                if t ==0:  # offline ----------------------------
-                    G0 = self.G_dynamic[t]
+                    G0 = self.G_dynamic[t]    # initial graph
                     sentences = simulate_walks(nx_graph=G0, num_walks=self.num_walks, walk_length=self.walk_length, restart_prob=None) #restart_prob=None or 0 --> deepwalk
                     sentences = [[str(j) for j in i] for i in sentences]
                     w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
@@ -149,9 +148,9 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      num_limit = int(G1.number_of_nodes() * limit)
      print('num_limit', num_limit)
      # remain some positions for random nodes to increase diversity for preserving global network structure
-     num_limit_half = int(num_limit * 0.5)
+     # num_limit_half = int(num_limit * 0.5)
      # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
-     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected)
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
 
      node_update_list = []   # all the nodes to be updated 
      if scheme == 0:
@@ -217,7 +216,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
      print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
      return node_update_list, reservoir_dict
-     
+
 
 def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, exist_node_affected):
      ''' return num_limit_return_nodes to be updated

@@ -130,6 +130,7 @@ def main(args):
         print(f'No downsateam task; exit... ')
     
     del model  # to save memory
+    print(f'--- start lp_changed task ...: ', time.time())
     if args.task == 'lp_changed' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
         for t in range(len(emb_dicts)-1):
@@ -141,6 +142,7 @@ def main(args):
             ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
             ds_task.evaluate_auc(test_edges, test_label)
 
+    print(f'--- start lp task ...: ', time.time())
     if args.task == 'lp' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes_plus_others
         for t in range(len(emb_dicts)-1):
@@ -151,7 +153,8 @@ def main(args):
             test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
             ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
             ds_task.evaluate_auc(test_edges, test_label)
-            
+    
+    print(f'--- start gr_changed task ...: ', time.time())
     if args.task == 'gr_changed' or args.task == 'all':
         from libne.downstream import grClassifier, gen_test_node_wrt_changes
         for t in range(len(emb_dicts)-1):
@@ -163,7 +166,8 @@ def main(args):
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=test_nodes) # use current emb @t reconstruct graph t
             # ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=test_nodes)
             # NOTE: if memory error, try grClassifier_batch (see dowmstream.py) which is slow but greatly reduce ROM
-
+    
+    print(f'--- start gr task ...: ', time.time())
     if args.task == 'gr' or args.task == 'all':
         from libne.downstream import grClassifier
         for t in range(len(emb_dicts)-1):
@@ -175,6 +179,7 @@ def main(args):
             # ds_task.evaluate_average_precision_k(top_k=precision_at_k)
             # NOTE: if memory error, try grClassifier_batch (see dowmstream.py) which is slow but greatly reduce ROM
     
+    print(f'--- start nc task ...: ', time.time())
     if args.task == 'nc' or args.task == 'all':
         from libne.downstream import ncClassifier
         from sklearn.linear_model import LogisticRegression  # to do... try SVM...

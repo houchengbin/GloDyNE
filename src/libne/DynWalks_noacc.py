@@ -149,9 +149,9 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      num_limit = int(G1.number_of_nodes() * limit)
      print('num_limit', num_limit)
      # remain some positions for random nodes to increase diversity for preserving global network structure
-     num_limit_half = int(num_limit * 0.5)
+     # num_limit_half = int(num_limit * 0.5)
      # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
-     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit_half, reservoir_dict, exist_node_affected)
+     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
 
      node_update_list = []   # all the nodes to be updated 
      if scheme == 0:
