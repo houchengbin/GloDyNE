@@ -181,6 +181,14 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
           num_limit_random = num_limit-len(most_affected_nodes)
+          if num_limit_random <= len(all_nodes):
+               random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+          else: # extreme rare case; For fairness, we sample the rest from most_affected_nbrs, which still maintains the diversity as well as equal nodes to be updated
+               random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
+               num_rest = num_limit_random - len(all_nodes)
+               random_nodes.extend( list(np.random.choice(most_affected_nbrs, num_rest, replace=False)) )
+
+          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))   # to sampling num_limit_random > len(all_nodes) case... but less nodes are sampled, if accuracy drops, try to increase them
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
           node_update_list = random_nodes + node_add + most_affected_nodes
 
