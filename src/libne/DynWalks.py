@@ -141,6 +141,12 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del)) # unique
      node_add = [node for node in node_affected_by_edge_add if node not in G0.nodes()]
      node_del = [node for node in node_affected_by_edge_del if node not in G1.nodes()]
+     if len(node_del) !=0:
+          reservoir_key_list = list(reservoir_dict.keys())
+          for node in node_del:
+               if node in reservoir_key_list:
+                    del reservoir_dict[node]  # if node being deleted, also delete it from reservoir
+
      exist_node_affected = list(set(node_affected) - set(node_add) - set(node_del))  # affected nodes are in both G0 and G1
 
      t1 = time.time()
