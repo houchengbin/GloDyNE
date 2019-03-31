@@ -167,15 +167,15 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           print('scheme == 1')
           tabu_nodes = node_add
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = num_limit
+          num_limit_random = min(num_limit, len(all_nodes))       # we take len(all_nodes) if num_limit > len(all_nodes)
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
           node_update_list = random_nodes + node_add
 
      if scheme == 2:
           print('scheme == 2')
-          tabu_nodes = list(set(node_add + most_affected_nodes))      # different from scheme 1, we add some most affected nodes
+          tabu_nodes = list(set(node_add + most_affected_nodes))   # different from scheme 1, we add some most affected nodes
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = num_limit-len(most_affected_nodes)
+          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
           node_update_list = random_nodes + node_add + most_affected_nodes
 
@@ -186,17 +186,9 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
                most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )           # what about nbrs of nbrs? more diversity!
           tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = num_limit-len(most_affected_nodes)
-          if num_limit_random <= len(all_nodes):
-               random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
-          else: # extreme rare case; For fairness, we sample the rest from most_affected_nbrs, which still maintains the diversity as well as equal nodes to be updated
-               random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
-               num_rest = num_limit_random - len(all_nodes)
-               random_nodes.extend( list(np.random.choice(most_affected_nbrs, num_rest, replace=False)) )
-
-          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))   # to sampling num_limit_random > len(all_nodes) case... but less nodes are sampled, if accuracy drops, try to increase them
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
-          node_update_list = random_nodes + node_add + most_affected_nodes
+          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))        # TODO... due to most_affected_nbrs as tabu_nodes, in some extreme case
+          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False)) # scheme 3 get less nodes as scheme 2&1... (anyway, we think it is not a big problem...)
+          node_update_list = random_nodes + node_add + most_affected_nodes                  # possible solution: sample the rest from most_affected_nbrs
 
      if scheme == 4:
           print('scheme == 4')
@@ -204,7 +196,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
           all_nodes_degrees = [G1.degree[node] for node in all_nodes]
           degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()  #more likely to choose node with larger degree
-          num_limit_random = num_limit-len(most_affected_nodes)
+          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
           node_update_list = random_nodes + node_add + most_affected_nodes
 
@@ -215,7 +207,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           all_nodes_degrees = [G1.degree[node] for node in all_nodes]
           inverse_all_nodes_degrees = 1.0 / np.array(all_nodes_degrees)
           degree_dist = np.array(inverse_all_nodes_degrees) / np.array(inverse_all_nodes_degrees).sum() #more likely to choose node with smaller degree
-          num_limit_random = num_limit-len(most_affected_nodes)
+          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
           random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
           node_update_list = random_nodes + node_add + most_affected_nodes
      
