@@ -44,12 +44,10 @@ from .utils import edge_s1_minus_s0, unique_nodes_from_edge_set
 
 
 class DynWalks(object):
-     def __init__(self, G_dynamic, restart_prob=0.2, update_threshold=0.1, emb_dim=128, num_walks=20, walk_length=80, 
-                    window=10, workers=20, negative=5, seed=2019, limit=0.1, scheme=3):
+     def __init__(self, G_dynamic, limit, local_global, num_walks, walk_length, window, 
+                    emb_dim, negative, workers, seed, scheme):
           self.G_dynamic = G_dynamic.copy()  # a series of dynamic graphs
           self.emb_dim = emb_dim   # node emb dimensionarity
-          self.update_threshold = update_threshold # NOT used anymore, as limit will automatically adjust update_threshold [will be deleted later]
-          self.restart_prob = restart_prob  # restart probability for random walks
           self.num_walks = num_walks  # num of walks start from each node
           self.walk_length = walk_length  # walk length for each walk
           self.window = window  # Skip-Gram parameter
@@ -59,6 +57,7 @@ class DynWalks(object):
 
           self.scheme = scheme
           self.limit = limit
+          self.local_global = local_global  # balancing factor for local changes and global topology
 
           self.emb_dicts = [] # emb_dict @ t0, t1, ...; len(self.emb_dicts) == len(self.G_dynamic)
           self.reservoir = {} # {nodeID: num of affected, ...}
@@ -75,15 +74,23 @@ class DynWalks(object):
                t1 = time.time()
                if t ==0:  # offline ----------------------------
                     G0 = self.G_dynamic[t]    # initial graph
-                    sentences = simulate_walks(nx_graph=G0, num_walks=self.num_walks, walk_length=self.walk_length, restart_prob=None) #restart_prob=None or 0 --> deepwalk
+                    sentences = simulate_walks(nx_graph=G0, num_walks=self.num_walks, walk_length=self.walk_length)
                     sentences = [[str(j) for j in i] for i in sentences]
                     w2v.build_vocab(sentences=sentences, update=False) # init traning, so update False
                     w2v.train(sentences=sentences, total_examples=w2v.corpus_count, epochs=w2v.iter) # follow w2v constructor
                else:      # online adapting --------------------
                     G0 = self.G_dynamic[t-1]  # previous graph
                     G1 = self.G_dynamic[t]    # current graph
-                    node_update_list, self.reservoir = node_selecting_scheme(graph_t0=G0, graph_t1=G1, reservoir_dict=self.reservoir, limit=self.limit, scheme=self.scheme)
-                    sentences = simulate_walks(nx_graph=G1, num_walks=self.num_walks, walk_length=self.walk_length, restart_prob=self.restart_prob, affected_nodes=node_update_list)
+                    node_update_list, self.reservoir = node_selecting_scheme(graph_t0=G0, graph_t1=G1, reservoir_dict=self.reservoir, 
+                                                                                limit=self.limit, local_global=self.local_global, scheme=self.scheme)
+                    # print(node_update_list)
+                    # node_update_list_2_txt(node_update_list,'node_update_list.txt')
+                    sentences = simulate_walks(nx_graph=G1, num_walks=self.num_walks, walk_length=self.walk_length, affected_nodes=node_update_list)
+                    # sentences_2_pkl(sentences,'sentences.pkl')
+                    # with open('sentences.pkl', 'rb') as f:
+                    #     any_object = pickle.load(f)
+                    # print(any_object)
+                    # exit(0)
                     sentences = [[str(j) for j in i] for i in sentences]
                     w2v.build_vocab(sentences=sentences, update=True) # online update
                     w2v.train(sentences=sentences, total_examples=w2v.corpus_count, epochs=w2v.iter)
@@ -117,19 +124,17 @@ class DynWalks(object):
 # ---------- utils: most_affected_nodes, simulate_walks, random_walk, random_walk_restart ------------
 # ----------------------------------------------------------------------------------------------------
 
-def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=3):
+def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_global=0.5, scheme=3):
      ''' select nodes to be updated
           G0: previous graph @ t-1;
           G1: current graph  @ t;
           reservoir_dict: will be always maintained in ROM
           limit: fix the number of node --> the percentage of nodes of a network to be updated (exclude new nodes)
+          local_global: # of nodes from recent changes v.s. from random nodes
 
-          scheme 0: new nodes (DeppWalk-SGNE dynamic version)
-          scheme 1: new nodes + random nodes 
-          scheme 2: new nodes + most affected nodes + random nodes
-          scheme 3: new nodes + most affected nodes + random nodes (much diverse?; also exclude most affected their neighbors) 
-          scheme 4: new nodes + most affected nodes + random nodes that will be selected if with large degree
-          scheme 5: new nodes + most affected nodes + random nodes that will be selected if with small degree 
+          scheme 1: new nodes + most affected nodes
+          scheme 2: new nodes + random nodes
+          scheme 3: new nodes + most affected nodes + random nodes
      '''
      G0 = graph_t0.copy()
      G1 = graph_t1.copy()
@@ -150,67 +155,41 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
      exist_node_affected = list(set(node_affected) - set(node_add) - set(node_del))  # affected nodes are in both G0 and G1
 
      t1 = time.time()
-     # for fair comparsion, the number of nodes to be updated are the same for schemes 1, 2, 3, 4, 5 whereas scheme 0 is DeepWalk-SGNE
+     # for fair comparsion, the number of nodes to be updated are the same for schemes 1, 2, 3
      num_limit = int(G1.number_of_nodes() * limit)
-     print('num_limit', num_limit)
-     # remain some positions for random nodes to increase diversity for preserving global network structure
-     # num_limit_half = int(num_limit * 0.5)
-     # choose the top "num_limit_half" most affected nodes for preserving the local structure of most affected nodes
-     most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
+     local_limit = int(local_global * num_limit)
+     global_limit = num_limit - local_limit
+
 
      node_update_list = []   # all the nodes to be updated 
-     if scheme == 0:
-          print('scheme == 0')
-          node_update_list = node_add
-
      if scheme == 1:
           print('scheme == 1')
-          tabu_nodes = node_add
-          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = min(num_limit, len(all_nodes))       # we take len(all_nodes) if num_limit > len(all_nodes)
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
-          node_update_list = random_nodes + node_add
+          most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
+          if len(most_affected_nodes) < num_limit:  # for fairness, resample until meets num_limit
+               temp_num = num_limit - len(most_affected_nodes)
+               temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
+               most_affected_nodes.extend(temp_nodes)
+          node_update_list = node_add + most_affected_nodes
 
      if scheme == 2:
           print('scheme == 2')
-          tabu_nodes = list(set(node_add + most_affected_nodes))   # different from scheme 1, we add some most affected nodes
-          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False))
-          node_update_list = random_nodes + node_add + most_affected_nodes
+          all_nodes = [node for node in G1.nodes()]
+          random_nodes = list(np.random.choice(all_nodes, num_limit, replace=False))
+          node_update_list =  node_add + random_nodes
 
      if scheme == 3:
           print('scheme == 3')
-          most_affected_nbrs = []
-          for node in most_affected_nodes:
-               most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )           # what about nbrs of nbrs? more diversity!
-          tabu_nodes = list(set(node_add + most_affected_nodes + most_affected_nbrs))  # different from scheme 2, we further increase diversity
-          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))        # TODO... due to most_affected_nbrs as tabu_nodes, in some extreme case
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False)) # scheme 3 get less nodes as scheme 2&1... (anyway, we think it is not a big problem...)
-          node_update_list = random_nodes + node_add + most_affected_nodes                  # possible solution: sample the rest from most_affected_nbrs
-
-     if scheme == 4:
-          print('scheme == 4')
+          most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, local_limit, reservoir_dict, exist_node_affected)
+          if len(most_affected_nodes) < local_limit:  # resample until meets local_limit
+               temp_num = local_limit - len(most_affected_nodes)
+               temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
+               most_affected_nodes.extend(temp_nodes)
           tabu_nodes = list(set(node_add + most_affected_nodes))
-          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
-          degree_dist = np.array(all_nodes_degrees) / np.array(all_nodes_degrees).sum()  #more likely to choose node with larger degree
-          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
-          node_update_list = random_nodes + node_add + most_affected_nodes
+          other_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+          random_nodes = list(np.random.choice(other_nodes, global_limit, replace=False))
+          node_update_list =  node_add + most_affected_nodes + random_nodes
 
-     if scheme == 5:
-          print('scheme == 5')
-          tabu_nodes = list(set(node_add + most_affected_nodes))
-          all_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          all_nodes_degrees = [G1.degree[node] for node in all_nodes]
-          inverse_all_nodes_degrees = 1.0 / np.array(all_nodes_degrees)
-          degree_dist = np.array(inverse_all_nodes_degrees) / np.array(inverse_all_nodes_degrees).sum() #more likely to choose node with smaller degree
-          num_limit_random = min(num_limit-len(most_affected_nodes), len(all_nodes))
-          random_nodes = list(np.random.choice(all_nodes, num_limit_random, replace=False, p=degree_dist))
-          node_update_list = random_nodes + node_add + most_affected_nodes
-     
+
      reservoir_key_list = list(reservoir_dict.keys())
      for node in node_update_list:
           if node in reservoir_key_list:
@@ -218,9 +197,10 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
 
      t2 = time.time()
      print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
-     print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
+     print('num_limit',num_limit, 'local_limit',local_limit, 'global_limit',global_limit)
      print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
      print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
+     print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
      return node_update_list, reservoir_dict
 
 
@@ -252,7 +232,7 @@ def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, e
                     cnt += 1
                     if cnt == num_limit_return_nodes:         # fix bug: we need exactly the number of limit return nodes...
                          break
-     else: # NOTE: if most_affected_nodes are less than half_limit, additional random nodes will be automatically sampled for compensation
+     else:  #NOTE: len(exist_node_affected) <= num_limit_return_nodes
           most_affected_nodes = exist_node_affected
      return most_affected_nodes, reservoir_dict
 
@@ -261,6 +241,7 @@ def select_most_affected_nodes_nbrs(G1, most_affected_nodes):
      for node in most_affected_nodes:
           most_affected_nbrs.extend( list(nx.neighbors(G=G1, n=node)) )
      return list(set(most_affected_nbrs)) #return a list without repeated items
+
 
 
 def simulate_walks(nx_graph, num_walks, walk_length, restart_prob=None, affected_nodes=None):
@@ -328,6 +309,7 @@ def random_walk(nx_graph, start_node, walk_length):
                break
      return walk
 
+
 def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
      '''
      random walk with restart
@@ -349,3 +331,20 @@ def random_walk_restart(nx_graph, start_node, walk_length, restart_prob):
                else:
                     break
      return walk
+
+def node_update_list_2_txt(my_list, path):
+     with open(path, 'w') as f:
+          for item in my_list:
+               f.write("%s\n" % item)
+
+def sentences_2_pkl(my_list, path):
+     import collections
+     new_list = []
+     for items in my_list:
+          for item in items:
+               new_list.append(item)
+     c = collections.Counter(new_list)
+
+     with open(path, 'wb') as f:
+          pickle.dump(c, f, protocol=pickle.HIGHEST_PROTOCOL)
+

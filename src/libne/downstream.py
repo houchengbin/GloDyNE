@@ -87,7 +87,8 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1):
         pass
     print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
-
+    
+"""
 def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
     ''' generate additional the number of (0.1*nodes) of pos_edges and neg_edges respectively for testing
     '''
@@ -120,7 +121,7 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
             break
     print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
-
+"""
 
 
 
