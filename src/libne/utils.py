@@ -16,24 +16,14 @@ import networkx as nx
 # -----------------------------------------------------------------------------
 # --------------------------------- metrics -----------------------------------
 # -----------------------------------------------------------------------------
-def cosine_similarity(vec_a, vec_b):
+def cosine_similarity(a, b):
+    from numpy import dot
+    from numpy.linalg import norm
     ''' cosine similarity; can be used as score function; vector by vector; 
         If consider similarity for all pairs,
         pairwise_similarity() implementation may be more efficient
     '''
-    sum = 0.0
-    for i in range(len(vec_a)):
-        sum = sum + vec_a[i] * vec_b[i]
-    return sum / (l2_norm(vec_a) * l2_norm(vec_b) + 1e-100) # add 1e-100 to avoid numerical issue
-
-def l2_norm(vec):
-    ''' l2_norm of a vector; used in above cosine_similarity()
-    '''
-    import math
-    sum = 0.0
-    for i in range(len(vec)):
-        sum = sum + vec[i] * vec[i]
-    return math.sqrt(sum)
+    return dot(a, b)/(norm(a)*norm(b))
 
 def pairwise_similarity(mat, type='cosine'):
     ''' pairwise similarity; can be used as score function;
