@@ -165,29 +165,42 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
      if scheme == 1:
           print('scheme == 1')
           most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
-          if len(most_affected_nodes) < num_limit:  # for fairness, resample until meets num_limit
-               temp_num = num_limit - len(most_affected_nodes)
-               temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
-               most_affected_nodes.extend(temp_nodes)
-          node_update_list = node_add + most_affected_nodes
+          if len(most_affected_nodes)+len(node_add) != 0:
+               if len(most_affected_nodes) < num_limit:  # for fairness, resample until meets num_limit
+                    temp_num = num_limit - len(most_affected_nodes)
+                    temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
+                    most_affected_nodes.extend(temp_nodes)
+               node_update_list = node_add + most_affected_nodes
+          else:
+               print('nothing changed... For fairness, randomly update some as scheme 2 does')
+               all_nodes = [node for node in G1.nodes()]
+               random_nodes = list(np.random.choice(all_nodes, num_limit, replace=False))
+               node_update_list =  node_add + random_nodes
 
      if scheme == 2:
           print('scheme == 2')
           all_nodes = [node for node in G1.nodes()]
           random_nodes = list(np.random.choice(all_nodes, num_limit, replace=False))
           node_update_list =  node_add + random_nodes
+          # node_update_list = ['1','1','1']
 
      if scheme == 3:
           print('scheme == 3')
           most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, local_limit, reservoir_dict, exist_node_affected)
-          if len(most_affected_nodes) < local_limit:  # resample until meets local_limit
-               temp_num = local_limit - len(most_affected_nodes)
-               temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
-               most_affected_nodes.extend(temp_nodes)
-          tabu_nodes = list(set(node_add + most_affected_nodes))
-          other_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-          random_nodes = list(np.random.choice(other_nodes, global_limit, replace=False))
-          node_update_list =  node_add + most_affected_nodes + random_nodes
+          if len(most_affected_nodes)+len(node_add) != 0:
+               if len(most_affected_nodes) < local_limit:  # resample until meets local_limit
+                    temp_num = local_limit - len(most_affected_nodes)
+                    temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
+                    most_affected_nodes.extend(temp_nodes)
+               tabu_nodes = list(set(node_add + most_affected_nodes))
+               other_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
+               random_nodes = list(np.random.choice(other_nodes, global_limit, replace=False))
+               node_update_list =  node_add + most_affected_nodes + random_nodes
+          else:
+               print('nothing changed... For fairness, randomly update some as scheme 2 does')
+               all_nodes = [node for node in G1.nodes()]
+               random_nodes = list(np.random.choice(all_nodes, num_limit, replace=False))
+               node_update_list =  node_add + random_nodes
 
 
      reservoir_key_list = list(reservoir_dict.keys())
@@ -199,7 +212,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
      print(f'--> node selecting time; time cost: {(t2-t1):.2f}s')
      print('num_limit',num_limit, 'local_limit',local_limit, 'global_limit',global_limit)
      print(f'# nodes added {len(node_add)}, # nodes deleted {len(node_del)}, # nodes updated {len(node_update_list)}')
-     print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
+     # print(f'# nodes affected {len(node_affected)}, # nodes most affected {len(most_affected_nodes)}')
      print(f'num of nodes in reservoir with accumulated changes but not updated {len(list(reservoir_dict))}')
      return node_update_list, reservoir_dict
 
