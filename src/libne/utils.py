@@ -23,7 +23,12 @@ def cosine_similarity(a, b):
         If consider similarity for all pairs,
         pairwise_similarity() implementation may be more efficient
     '''
-    return dot(a, b)/(norm(a)*norm(b))
+    a = np.reshape(a,-1)
+    b = np.reshape(b,-1)
+    if norm(a)*norm(b) == 0:
+        return 0.0
+    else:
+        return dot(a, b)/(norm(a)*norm(b))
 
 def pairwise_similarity(mat, type='cosine'):
     ''' pairwise similarity; can be used as score function;
