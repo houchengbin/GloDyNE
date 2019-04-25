@@ -165,7 +165,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
      if scheme == 1:
           print('scheme == 1')
           most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, num_limit, reservoir_dict, exist_node_affected)
-          if len(most_affected_nodes)+len(node_add) != 0:
+          if len(most_affected_nodes) != 0:
                if len(most_affected_nodes) < num_limit:  # for fairness, resample until meets num_limit
                     temp_num = num_limit - len(most_affected_nodes)
                     temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
@@ -184,17 +184,17 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
           node_update_list =  node_add + random_nodes
           # node_update_list = ['1','1','1']
 
-     if scheme == 3:
+     if scheme == 3:                                                                             # trade-off between local recent changes and global topology by 'local_global' (defalt 0.5)
           print('scheme == 3')
           most_affected_nodes, reservoir_dict = select_most_affected_nodes(G0, G1, local_limit, reservoir_dict, exist_node_affected)
-          if len(most_affected_nodes)+len(node_add) != 0:
+          if len(most_affected_nodes) != 0:                                                      # if local_global=0 --> local_limit=0 --> len(most_affected_nodes)==0 --> scheme 2
                if len(most_affected_nodes) < local_limit:  # resample until meets local_limit
                     temp_num = local_limit - len(most_affected_nodes)
                     temp_nodes = list(np.random.choice(most_affected_nodes+node_add, temp_num, replace=True))
                     most_affected_nodes.extend(temp_nodes)
                tabu_nodes = list(set(node_add + most_affected_nodes))
                other_nodes = [node for node in G1.nodes() if node not in tabu_nodes]
-               random_nodes = list(np.random.choice(other_nodes, global_limit, replace=False))
+               random_nodes = list(np.random.choice(other_nodes, global_limit, replace=False))   # if local_global=1 --> local_limit = limit --> global_limit=0 --> scheme 1
                node_update_list =  node_add + most_affected_nodes + random_nodes
           else:
                print('nothing changed... For fairness, randomly update some as scheme 2 does')
@@ -204,7 +204,8 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
 
 
      reservoir_key_list = list(reservoir_dict.keys())
-     for node in node_update_list:
+     node_update_set = set(node_update_list)  # remove repeated nodes due to resample
+     for node in node_update_set:
           if node in reservoir_key_list:
                del reservoir_dict[node]  # if updated, delete it
 
@@ -241,10 +242,10 @@ def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, e
           cnt = 0
           for node in reservoir_dict_score.keys():
                if reservoir_dict_score[node] >= cutoff_score: # fix bug: there might be multiple equal cutoff_score nodes...
-                    most_affected_nodes.append(node)
-                    cnt += 1
                     if cnt == num_limit_return_nodes:         # fix bug: we need exactly the number of limit return nodes...
                          break
+                    most_affected_nodes.append(node)
+                    cnt += 1
      else:  #NOTE: len(exist_node_affected) <= num_limit_return_nodes
           most_affected_nodes = exist_node_affected
      return most_affected_nodes, reservoir_dict
