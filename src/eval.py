@@ -8,6 +8,7 @@ by Chengbin HOU <chengbin.hou10@foxmail.com>
 '''
 
 import time
+import numpy as np
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from libne.utils import load_any_obj_pkl
 
@@ -37,7 +38,52 @@ def main(args):
 
     # ---------------------------------------STEP2: downstream task-----------------------------------------------
     print('\nSTEP2: start evaluating ......: ')
-    t1 = time.time()    
+    t1 = time.time()
+    print(f'--- start link prediction task --> use current emb @t to predict **future** changed links @t+1 ...: ')
+    if args.task == 'lp_changed' or args.task == 'all':   # for this task, we may need a big diff between two time steps --> more testing data --> more stable result
+        from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
+        for t in range(len(emb_dicts)-1):
+            print(f'Current time step @t: {t}')
+            print(f'Changed Link Prediction task by AUC score')
+            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
+            test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
+            test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
+            ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
+            ds_task.evaluate_auc(test_edges, test_label)
+    
+    print(f'--- start graph/link reconstraction task --> use current emb @t to reconstruct **current** graph @t...: ')
+    if args.task == 'gr' or args.task == 'all':
+        from libne.downstream import grClassifier, gen_test_node_wrt_changes
+        for t in range(len(emb_dicts)-1):
+            print(f'Current time step @t: {t}')
+            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
+            changed_nodes = gen_test_node_wrt_changes(G_dynamic[t],G_dynamic[t+1])                 # CGR testing nodes
+            print('# of changed_nodes for testing: ', len(changed_nodes))  
+            all_nodes = list(G_dynamic[t].nodes())
+            random_nodes = list(np.random.choice(all_nodes, int(len(all_nodes)*0.25), replace=False))   # GR testing nodes
+            print('# of random_nodes for testing: ', len(random_nodes))                                 
+            # ------------------------- more like a top-k 'most similar nodes search' problem for the given nodes ---------------------
+            precision_at_k = 10
+            print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            print(f'Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
+            print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
+            # ------ more like a graph reconstraction/compression problem since many real-world networks has less degree than 100 ------
+            precision_at_k = 100
+            print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            print(f'Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
+            print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
+            # NOTE: if memory error, try grClassifier_batch (see dowmstream.py) which is slow but greatly reduce ROM
+    """  
     if args.task == 'lp_changed' or args.task == 'all':
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
         for t in range(len(emb_dicts)-1):
@@ -100,7 +146,7 @@ def main(args):
                 ds_task.split_train_evaluate(X, Y, train_precent=0.5)
         except:
             print(f'ground truth label file not exist; not support node classification task')
-
+    """
     t2 = time.time()
     print(f'STEP3: end evaluating; time cost: {(t2-t1):.2f}s')
 
