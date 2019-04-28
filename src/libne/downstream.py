@@ -187,7 +187,7 @@ class grClassifier(object):
                 new_score_mat = [self.score_mat[i] for i in node_idx]
                 size = len(new_adj_mat)
                 for i in range(size):
-                    pk_list.append(ranking_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # ranking_precision_score only on node_list
+                    pk_list.append(average_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # average_precision_score only on node_list
         print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
 # --------------------------------------------------------------------------------------
