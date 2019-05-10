@@ -190,7 +190,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, local_g
           lack = local_limit - len(most_affected_nodes)   # if the changes are relatively smaller than local_limit, sample some random nodes for compensation
           tabu_nodes = set(node_add + most_affected_nodes)
           other_nodes = list( set(G1.nodes()) - tabu_nodes )
-          random_nodes = list(np.random.choice(other_nodes, global_limit+lack, replace=False))
+          random_nodes = list(np.random.choice(other_nodes, min(global_limit+lack, len(other_nodes)), replace=False))
           node_update_list =  node_add + most_affected_nodes + random_nodes
 
      reservoir_key_list = list(reservoir_dict.keys())
