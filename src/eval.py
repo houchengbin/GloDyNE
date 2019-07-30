@@ -1,10 +1,16 @@
 '''
-demo of evaluating node embedding in downsatream task(s)
+demo of evaluating node embedding for different downsatream task(s)
 
-python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl --num-walks 20 --limit 0.1 --scheme 3 --emb-dim 100 --workers 6
-python src/eval.py --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_128_embs.pkl
+Note that, the 'main.py' file contains all functions in 'eval.py'. You may test DynWalks in one go using 'main.py' itself by set task=all.
 
-by Chengbin HOU <chengbin.hou10@foxmail.com>
+For fairness, 
+this 'eval.py' as well as all files in 'libne' will be used to evalate other dynamic network embedding methods
+To generate node embeddings by other methods, please see:
+BCGD:        https://github.com/linhongseba/Temporal-Network-Embedding
+DynGEM:      https://github.com/palash1992/DynamicGEM
+DynTriad:    https://github.com/luckiezhou/DynamicTriad
+
+by Chengbin Hou
 '''
 
 import time
@@ -62,7 +68,7 @@ def main(args):
             all_nodes = list(G_dynamic[t].nodes())
             random_nodes = list(np.random.choice(all_nodes, int(len(all_nodes)*0.25), replace=False))   # GR testing nodes
             print('# of random_nodes for testing: ', len(random_nodes))                                 
-            # ------------------------- more like a top-k 'most similar nodes search' problem for the given nodes ---------------------
+            # ------------------------- @10 ----------------------
             precision_at_k = 10
             print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
@@ -72,7 +78,7 @@ def main(args):
             ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
             print(f'Graph Reconstruction by MAP @{precision_at_k}')
             ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
-            # ------ more like a graph reconstraction/compression problem since many real-world networks has less degree than 100 ------
+            # ------------------------- @100 ---------------------
             precision_at_k = 100
             print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP

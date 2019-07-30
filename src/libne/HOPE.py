@@ -1,3 +1,8 @@
+"""
+other static NE method...
+originally from https://github.com/AnryYang/HOPE
+"""
+
 import networkx as nx
 import numpy as np
 import scipy.io as sio
@@ -5,10 +10,6 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as lg
 from sklearn.preprocessing import normalize
 import time
-
-__author__ = "Alan WANG"
-__email__ = "alan1995wang@outlook.com"
-
 
 class HOPE(object):
     def __init__(self, G_dynamic, emb_dim=128):

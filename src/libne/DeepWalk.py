@@ -1,5 +1,6 @@
 '''
-Static Network Embedding: DeepWalk
+other static NE method...
+DeepWalk-SGNS version by Chengbin Hou
 '''
 
 import warnings

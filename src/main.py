@@ -1,18 +1,28 @@
 '''
-demo of node embedding in dynamic environment: DynWalks and its competitors
-STEP1: prepare data --> (load all graphs at a time; but note DynWalks can naturally support streaming graphs/edges if available)
-STEP2: learn node embeddings -->
-STEP3: downstream evaluations
-
-python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --label data/cora/cora_node_label_dict.pkl --emb-file output/cora_DynWalks_embs.pkl --num-walks 20 --walk-length 80 --window 10 --limit 0.1 --scheme 3 --emb-dim 128 --workers 6
+DynWalks
+STEP1: prepare data
+STEP2: learn node embeddings
+STEP3: downstream tasks evaluation
 
 DynWalks hyper-parameters:
-scheme=3, limit=0.1, local_global=0.5       # DynWalks key hyper-parameters
-num_walks=20, walk_length=80,               # deepwalk hyper-parameters
-window=10, negative=5,                      # Skig-Gram hyper-parameters
-seed=2019, workers=20,                      # not related to accuracy
+scheme=3,                             # the final version of DynWalks presented and tested in our paper
+limit=0.1, local-global=0.5           # DynWalks key hyper-parameters
+                                      # NOTE: limit i.e. $\alpha$, local_global i.e. $\beta$ in our paper
+num_walks=20, walk_length=80,         # random walk hyper-parameters
+window=10, negative=5,                # Skig-Gram hyper-parameters
+seed=2019, workers=20,                # others
 
-by Chengbin HOU <chengbin.hou10@foxmail.com>
+--------------------------------------------------------------------------------------
+NB: You may ignore other static network embedding methods: DeepWalk, GraRep, HOPE.
+    Our method DynWalks is independent from them.
+
+    For other compared dynamic network embedding methods, please see:
+    BCGD:        https://github.com/linhongseba/Temporal-Network-Embedding
+    DynGEM:      https://github.com/palash1992/DynamicGEM
+    DynTriad:    https://github.com/luckiezhou/DynamicTriad
+--------------------------------------------------------------------------------------
+
+by Chengbin Hou
 '''
 
 import warnings
@@ -42,9 +52,9 @@ def parse_args():
     parser.add_argument('--method', default='DynWalks', choices=['DynWalks', 'DeepWalk', 'GraRep', 'HOPE'],
                         help='choices of Network Embedding methods')
     parser.add_argument('--limit', default=0.1, type=float,
-                        help='the limit of nodes to be updated at each time step')
+                        help='the limit of nodes to be updated at each time step i.e. $\alpha$ in our paper')
     parser.add_argument('--local-global', default=0.5, type=float,
-                        help='balancing factor for local changes and global topology; raning [0.0, 1.0]')
+                        help='balancing factor for local changes and global topology; raning [0.0, 1.0] i.e. $\beta$ in our paper')
     parser.add_argument('--scheme', default=3, type=int,
                         help='scheme 1: new + most affected; scheme 2: new + random; scheme 3: new + most affected + random')
     # walk based methods
@@ -72,7 +82,7 @@ def main(args):
     # logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
     print(f'Summary of all settings: {args}')
 
-    # ---------------------------------------STEP1: prepare data-----------------------------------------------------
+    # ----------------------------------------STEP1: prepare data-------------------------------------------------------
     print('\nSTEP1: start loading data......')
     t1 = time.time()
     G_dynamic = load_any_obj_pkl(args.graph)
@@ -128,7 +138,7 @@ def main(args):
         for t in range(len(emb_dicts)-1):
             print(f'Current time step @t: {t}')
             print(f'Changed Link Prediction task by AUC score')
-            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict graph t+1
+            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict topology @t+1
             test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
             test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
             ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
@@ -145,7 +155,7 @@ def main(args):
             all_nodes = list(G_dynamic[t].nodes())
             random_nodes = list(np.random.choice(all_nodes, int(len(all_nodes)*0.25), replace=False))   # GR testing nodes
             print('# of random_nodes for testing: ', len(random_nodes))                                 
-            # ------------------------- more like a top-k 'most similar nodes search' problem for the given nodes ---------------------
+            # ------------------------- @10 ----------------------
             precision_at_k = 10
             print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
@@ -155,7 +165,7 @@ def main(args):
             ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
             print(f'Graph Reconstruction by MAP @{precision_at_k}')
             ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
-            # ------ more like a graph reconstraction/compression problem since many real-world networks has less degree than 100 ------
+            # ------------------------- @100 ---------------------
             precision_at_k = 100
             print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP

@@ -1,6 +1,7 @@
 """
-downstream tasks; each task is a class;
-by Chengbin Hou & Zeyu Dong
+downstream tasks: Link Prediction, Graph Reconstraction, Node Classification
+each task is a Python Class
+by Chengbin Hou
 """
 
 import random

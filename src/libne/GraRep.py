@@ -1,5 +1,5 @@
 """
-a matrix factorization based NE method: GraRep
+other static NE method...
 originally from https://github.com/thunlp/OpenNE/blob/master/src/openne/grarep.py
 """
 

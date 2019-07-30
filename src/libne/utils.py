@@ -1,7 +1,11 @@
 """
-commonly used utils: 
-metric i.e. score function, graph related operation, 
-testing data generator, file I/O, visualization, etc.
+Commonly used utils:
+evaluation metrics e.g. similarity, AUC, AP@k, MAP@k
+graph related operation
+testing data generator
+file I/O
+visualization
+etc...
 
 by Chengbin Hou
 """
