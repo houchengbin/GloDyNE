@@ -1,16 +1,15 @@
 #! /bin/bash
-source activate DynNE;
+source activate GloDyNE
 
-echo '......Start FacebookWall DynWalks bash......';
+echo '......Chengbin HOU @SUSTech 2019 FacebookWall 0.1 DynWalks  bash......';
 
-echo '------------ DynWalks-FacebookWall a02_b05 -----------------------------------------';
-echo '------------ DynWalks-FacebookWall a02_b05 -----------------------------------------' > bash/log/FacebookWall_DynWalks_a02_b05.txt;
+echo '------------ FacebookWall_DynWalks_S4.txt-----------------------------------------';
+echo '------------ FacebookWall_DynWalks_S4.txt-----------------------------------------' > bash/log/FacebookWall_DynWalks_S4.txt;
 start=`date +%s`;
-python src/main.py --method DynWalks --task save --graph data/FacebookWall/FacebookWall.pkl --emb-file output/FacebookWall_DynWalks.pkl --num-walks 20 --walk-length 80 --window 10 --scheme 3 --limit 0.2 --local-global 0.5 --emb-dim 128 --workers 40  >> bash/log/FacebookWall_DynWalks_a02_b05.txt;
+python src/main.py --method DynWalks --task save --graph data/FacebookWall/FacebookWall_new.pkl --label data/FacebookWall/FacebookWall_label.pkl --emb-file output/FacebookWall_DynWalks.pkl --num-walks 10 --walk-length 80 --window 10 --limit 0.1 --scheme 4 --seed 2019 --emb-dim 128 --workers 32  >> bash/log/FacebookWall_DynWalks_S4.txt;
 end=`date +%s`;
-echo ALL running time: $((end-start)) >> bash/log/FacebookWall_DynWalks_a02_b05.txt;
-python src/eval.py --task all --graph data/FacebookWall/FacebookWall.pkl --emb-file output/FacebookWall_DynWalks.pkl >> bash/log/FacebookWall_DynWalks_a02_b05.txt;
-echo '--done--' >> bash/log/FacebookWall_DynWalks_a02_b05.txt;
-echo '--FacebookWall done--';
+echo ALL running time: $((end-start)) >> bash/log/FacebookWall_DynWalks_S4.txt;
+python src/eval.py --task all --graph data/FacebookWall/FacebookWall_new.pkl --emb-file output/FacebookWall_DynWalks.pkl --label data/FacebookWall/FacebookWall_label.pkl --seed 2019 >> bash/log/FacebookWall_DynWalks_S4.txt;
+echo '--done--' >> bash/log/FacebookWall_DynWalks_S4.txt;
 
-echo '......well done......';
+echo '......well done......'

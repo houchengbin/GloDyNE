@@ -1,15 +1,18 @@
-# DynWalks
-A dynamic network embedding method with some desirable properties:
-<br> --- Global Topology and Recent Changes Awareness
-<br> --- Excellent Time and space efficiency
-<br> --- Fulfilling real-time constraint if needed
-<br> --- Handling unseen nodes without placeholders or knowing them in advance
+# GloDyNE (previously called DynWalks)
+Currently, the new improved version is under the peer-review process... <br>
 
-This repository is for reproducing the results in paper <br>
-"DynWalks: Global Topology and Recent Changes Awareness Dynamic Network Embedding" <br>
-https://arxiv.org/abs/1907.11968
+The aim of this work is to propose a **dynamic network embedding** method for **better global topology preserving** of a dynamic network at each time step. Unlike all previous works that mainly consider the most affected regions of a network, the idea of this work, motivated by divide and conquer, is to partition a network into smaller sub-networks such that we can **diversely** consider the topological changes over a network. <br>
+The motivation of this work is that most real-world networks have some **inactivate regions/sub-networks** which would receive accumulated topological changes propagated via the high-order proximity. See the figure below for illustration. Therefore, in order to better preserve the global topology, we also need to consider the accumulated topological changes in the inactivate regions/sub-networks. However, previous works did not consider this issue.
 
-If you find it useful, please use the following citation.
+<center>
+    <img src="https://github.com/houchengbin/GloDyNE/blob/master/data/Fig1.jpg" width="666"/>
+</center>
+
+Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. Besides, the proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by $5^{th}$ order. b-d) The real-world dynamic networks have some inactive sub-networks (e.g., defined as no change occurs lasting for at least 5 time steps). The x-axis indicates the number of consecutive time steps that no change occurs in a sub-network. The y-axis gives the counts of each case in x-axis. The sub-networks, in average 50 nodes per sub-network, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.
+
+More details to be CONT'D...
+
+If you find this work is useful, please use the following citation.
 ```
 @article{hou2019dynwalks,
     title={DynWalks: Global Topology and Recent Changes Awareness Dynamic Network Embedding},
@@ -19,33 +22,42 @@ If you find it useful, please use the following citation.
 }
 ```
 
-## Usage (testing in CMD)
-#### Requirement
+## Requirement
 ```bash
-cd DynNE
+conda create -n GloDyNE python=3.6.8
+source activate GloDyNE
+cd GloDyNE
 pip install -r requirements.txt
 ```
-Python 3.6.6 or above is required due to the new [`print(f' ')`](https://docs.python.org/3.6/reference/lexical_analysis.html#f-strings) feature
-#### To obtain node embeddings as well as evaluate the quality
+You may also need to install [METIS package](https://github.com/networkx/networkx-metis) from the source. <br>
+Note, Python 3.6.6 or above is required due to the new [`print(f' ')`](https://docs.python.org/3.6/reference/lexical_analysis.html#f-strings) feature.
+
+## Usage
+#### To obtain node embeddings as well as evaluate by graph reconstruction task
 ```bash
-cd DynNE
-python src/main.py --method DynWalks --task all --graph data/cora/cora_dyn_graphs.pkl --emb-file output/cora_DynWalks_embs.pkl --scheme 3 --limit 0.2 --local-global 0.5 --num-walks 20 --walk-length 80 --window 10 --emb-dim 128 --workers 6
+cd GloDyNE
+python src/main.py --method DynWalks --task gr --graph data/AS733/AS733_new.pkl --label data/AS733/AS733_label.pkl --emb-file output/AS733_DynWalks.pkl --num-walks 10 --walk-length 80 --window 10 --limit 0.1 --scheme 4 --seed 2019 --emb-dim 128 --workers 32
 ```
 #### To save, and then load and evaluate node embeddings for different downstream tasks
 ```bash
-cd DynNE
-python src/main.py --method DynWalks --task save --graph data/cora/cora_dyn_graphs.pkl --emb-file output/cora_DynWalks_embs.pkl --scheme 3 --limit 0.2 --local-global 0.5 --num-walks 20 --walk-length 80 --window 10 --emb-dim 128 --workers 6
-python src/eval.py --task all --graph data/cora/cora_dyn_graphs.pkl --emb-file output/cora_DynWalks_128_embs.pkl
+cd GloDyNE
+python src/main.py --method DynWalks --task save --graph data/AS733/AS733_new.pkl --label data/AS733/AS733_label.pkl --emb-file output/AS733_DynWalks.pkl --num-walks 10 --walk-length 80 --window 10 --limit 0.1 --scheme 4 --seed 2019 --emb-dim 128 --workers 32
+python src/eval.py --task all --graph data/AS733/AS733_new.pkl --emb-file output/AS733_DynWalks.pkl --label data/AS733/AS733_label.pkl --seed 2019
 ```
-
-## Usage (advanced, for batch testing)
+#### Advanced, for batch testing
 ```bash
-cd DynNE
-bash bash/ALL.sh
+cd GloDyNE
+bash bash/ALL_small.sh
 ```
 
 ## Datasets
-Please see the [README.md](https://github.com/houchengbin/DynWalks/tree/master/data) under **data folder**, in which all the data preprocessing 'py' files are provided, as well as the hyperlinks to original datasets.
+Please see the [README.md](https://github.com/houchengbin/DynWalks/tree/master/data) under the **data** folder. <br>
+If you would like to use your own dataset, the input dynamic network can be prepared as follows: <br>
+1) create an empty dynamic network as an empty python list, called DynG; <br>
+2) use Networkx to build the graph based on the edge steams from time step t-k to t, called Gt; <br>
+3) append the current snapshot Gt to the dynamic network DynG; <br>
+4) repeat 2) and 3) as time goes on... <br>
+5) finally, use Pickle to store DynG as a .pkl file
 
 ## Issues
 We are happy to answer any questions about the code and paper.

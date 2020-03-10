@@ -76,10 +76,11 @@ def ranking_precision_score(y_true, y_score, k=10):
         y_true & y_score; array-like, shape = [n_samples]
         see https://gist.github.com/mblondel/7337391
     """
-    unique_y = np.unique(y_true)
-    if len(unique_y) > 2:
-        raise ValueError("Only supported for two relevance levels.")
-    pos_label = unique_y[1] # 1 as true
+    # unique_y = np.unique(y_true)
+    # if len(unique_y) > 2:
+    #    raise ValueError("Only supported for two relevance levels.")
+    # pos_label = unique_y[1] # 1 as true   # zero degree -> index 1 is out of bounds 
+    pos_label = 1  # === a faster & temp solution to fix zero degree node. NOTE: if the performance of GR is very low, use the above lines ====
     order = np.argsort(y_score)[::-1] # return index
     y_pred_true = np.take(y_true, order[:k]) # predict to be true @k
     n_relevant = np.sum(y_pred_true == pos_label) # predict to be true @k but how many are correct
@@ -93,10 +94,11 @@ def average_precision_score(y_true, y_score, k=10):
         y_true & y_score; array-like, shape = [n_samples]
         see https://gist.github.com/mblondel/7337391
     """
-    unique_y = np.unique(y_true)
-    if len(unique_y) > 2:
-        raise ValueError("Only supported for two relevance levels.")
-    pos_label = unique_y[1] # 1 as true
+    # unique_y = np.unique(y_true)
+    # if len(unique_y) > 2:
+    #    raise ValueError("Only supported for two relevance levels.")
+    # pos_label = unique_y[1] # 1 as true  # zero degree -> index 1 is out of bounds
+    pos_label = 1  # === a faster & temp solution to fix zero degree nodes. NOTE: if the performance of GR is very low, use the above lines ====
     n_pos = np.sum(y_true == pos_label)
     order = np.argsort(y_score)[::-1][:min(n_pos, k)] # note: if k>n_pos, we use fixed n_pos; otherwise use given k 
     y_pred_true = np.asarray(y_true)[order]

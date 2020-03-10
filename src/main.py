@@ -1,28 +1,28 @@
 '''
-DynWalks
+GloDyNE (or previous called DynWalks)
 STEP1: prepare data
 STEP2: learn node embeddings
-STEP3: downstream tasks evaluation
+STEP3: evaluate downstream tasks
 
-DynWalks hyper-parameters:
-scheme=3,                             # the final version of DynWalks presented and tested in our paper
-limit=0.1, local-global=0.5           # DynWalks key hyper-parameters
-                                      # NOTE: limit i.e. $\alpha$, local_global i.e. $\beta$ in our paper
-num_walks=20, walk_length=80,         # random walk hyper-parameters
-window=10, negative=5,                # Skig-Gram hyper-parameters
-seed=2019, workers=20,                # others
+GloDyNE hyper-parameters:
+limit=0.1                          # limited computational resources i.e. the upper limit # of selected nodes
+                                   # NOTE: limit i.e. $\alpha$ in our paper
+num_walks=10, walk_length=80,      # random walk hyper-parameters
+window=10, negative=5,             # Skip-Gram hyper-parameters
+seed=2019, workers=32,             # others
 
 --------------------------------------------------------------------------------------
 NB: You may ignore other static network embedding methods: DeepWalk, GraRep, HOPE.
     Our method DynWalks is independent from them.
 
     For other compared dynamic network embedding methods, please see:
-    BCGD:        https://github.com/linhongseba/Temporal-Network-Embedding
-    DynGEM:      https://github.com/palash1992/DynamicGEM
-    DynTriad:    https://github.com/luckiezhou/DynamicTriad
+    BCGD (2016):        https://github.com/linhongseba/Temporal-Network-Embedding
+    DynGEM (2017):      https://github.com/palash1992/DynamicGEM
+    DynTriad (2018):    https://github.com/luckiezhou/DynamicTriad
+    tNodeEmbed (2019):  https://github.com/urielsinger/tNodeEmbed
 --------------------------------------------------------------------------------------
 
-by Chengbin Hou
+by Chengbin Hou @ 2019
 '''
 
 import warnings
@@ -53,12 +53,10 @@ def parse_args():
                         help='choices of Network Embedding methods')
     parser.add_argument('--limit', default=0.1, type=float,
                         help='the limit of nodes to be updated at each time step i.e. $\alpha$ in our paper')
-    parser.add_argument('--local-global', default=0.5, type=float,
-                        help='balancing factor for local changes and global topology; raning [0.0, 1.0] i.e. $\beta$ in our paper')
-    parser.add_argument('--scheme', default=3, type=int,
-                        help='scheme 1: new + most affected; scheme 2: new + random; scheme 3: new + most affected + random')
+    parser.add_argument('--scheme', default=4, type=int,
+                        help='1 for greedy, 2 for random, 3 for modularity based, 4 for METIS based')
     # walk based methods
-    parser.add_argument('--num-walks', default=20, type=int,
+    parser.add_argument('--num-walks', default=10, type=int,
                         help='# of random walks of each node')
     parser.add_argument('--walk-length', default=80, type=int,
                         help='length of each random walk')
@@ -67,13 +65,10 @@ def parse_args():
                         help='window size of SGNS model')
     parser.add_argument('--negative', default=5, type=int,
                         help='negative samples of SGNS model')
-    parser.add_argument('--workers', default=24, type=int,
+    parser.add_argument('--workers', default=32, type=int,
                         help='# of parallel processes.')
     parser.add_argument('--seed', default=2019, type=int,
-                        help='random seed')
-    # other methods
-    parser.add_argument('--Kstep', default=4, type=int,
-                        help='Kstep used in GraRep model, error if not emb_dim % Kstep == 0')
+                        help='random seed to fix testing data')
     args = parser.parse_args()
     return args
 
@@ -99,23 +94,15 @@ def main(args):
     model = None
     if args.method == 'DynWalks':
         from libne import DynWalks  
-        model = DynWalks.DynWalks(G_dynamic=G_dynamic, limit=args.limit, local_global = args.local_global,
-                                    num_walks=args.num_walks, walk_length=args.walk_length, window=args.window,
-                                    emb_dim=args.emb_dim, negative=args.negative, workers=args.workers, seed=args.seed, scheme=args.scheme)
+        model = DynWalks.DynWalks(G_dynamic=G_dynamic, limit=args.limit, emb_dim=args.emb_dim, scheme=args.scheme,
+                                    num_walks=args.num_walks, walk_length=args.walk_length, window=args.window, negative=args.negative,
+                                    workers=args.workers, seed=args.seed)
         model.sampling_traning()
     elif args.method == 'DeepWalk':
         from libne import DeepWalk 
         model = DeepWalk.DeepWalk(G_dynamic=G_dynamic, num_walks=args.num_walks, walk_length=args.walk_length, window=args.window,
                                     negative=args.negative, emb_dim=args.emb_dim, workers=args.workers, seed=args.seed)
         model.sampling_traning()
-    elif args.method == 'GraRep':
-        from libne import GraRep
-        model = GraRep.GraRep(G_dynamic=G_dynamic, emb_dim=args.emb_dim, Kstep=args.Kstep)
-        model.traning()
-    elif args.method == 'HOPE':
-        from libne import HOPE
-        model = HOPE.HOPE(G_dynamic=G_dynamic, emb_dim=args.emb_dim)
-        model.traning()
     else:
         print('method not found...')
         exit(0)
@@ -133,50 +120,89 @@ def main(args):
     del model  # to save memory
 
     print(f'--- start link prediction task --> use current emb @t to predict **future** changed links @t+1 ...: ')
-    if args.task == 'lp_changed' or args.task == 'all':   # for this task, we may need a big diff between two time steps --> more testing data --> more stable result
+    if args.task == 'lp_changed' or args.task == 'all':   # the size of LP testing data depends on the changes between two consecutive snapshots
         from libne.downstream import lpClassifier, gen_test_edge_wrt_changes
-        for t in range(len(emb_dicts)-1):
+        for t in range(len(G_dynamic)-1):
             print(f'Current time step @t: {t}')
             print(f'Changed Link Prediction task by AUC score')
-            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1]) # use current emb @t predict topology @t+1
+            pos_edges_with_label, neg_edges_with_label = gen_test_edge_wrt_changes(G_dynamic[t],G_dynamic[t+1],seed=args.seed)  # diff between edge_set(Gt+1) and edges_set(Gt)
             test_edges = [e[:2] for e in pos_edges_with_label] + [e[:2] for e in neg_edges_with_label]
             test_label = [e[2] for e in pos_edges_with_label] + [e[2] for e in neg_edges_with_label]
-            ds_task = lpClassifier(emb_dict=emb_dicts[t])  # use current emb @t
+            ds_task = lpClassifier(emb_dict=emb_dicts[t])     
             ds_task.evaluate_auc(test_edges, test_label)
     
+    print(f'--- start node classification task --> use current emb @t to infer **current* corresponding label @t...: ')
+    if args.task == 'nc' or args.task == 'all':
+        from libne.downstream import ncClassifier
+        from sklearn.linear_model import LogisticRegression
+        try:
+            label_dict = load_any_obj_pkl(args.label) # ground truth label .pkl
+            for t in range(len(G_dynamic)-1):         # ignore the last one... so that it is consistent with LP
+                print(f'Current time step @t: {t}')
+                X = []
+                Y = []
+                for node in G_dynamic[t].nodes():     # only select current available nodes for eval, testing all nodes in Gt
+                    X.append(node)
+                    Y.append(str(label_dict[node]))   # label as str, otherwise, sklearn error
+                ds_task = ncClassifier(emb_dict=emb_dicts[t], clf=LogisticRegression())   
+                ds_task.split_train_evaluate(X, Y, train_precent=0.5, seed=args.seed)
+        except:
+            print('no node label; no NC task')
+
     print(f'--- start graph/link reconstraction task --> use current emb @t to reconstruct **current** graph @t...: ')
     if args.task == 'gr' or args.task == 'all':
         from libne.downstream import grClassifier, gen_test_node_wrt_changes
-        for t in range(len(emb_dicts)-1):
-            print(f'Current time step @t: {t}')
-            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t]) # use current emb @t reconstruct graph t
-            changed_nodes = gen_test_node_wrt_changes(G_dynamic[t],G_dynamic[t+1])                 # CGR testing nodes
+        for t in range(len(G_dynamic)-1):             # ignore the last one... so that it is consistent with LP
+            print(f'Current time step @t: {t}') 
+            ds_task = grClassifier(emb_dict=emb_dicts[t], rc_graph=G_dynamic[t])
+            changed_nodes = gen_test_node_wrt_changes(G_dynamic[t],G_dynamic[t+1])                     # CGR testing nodes, changed nodes between Gt and Gt+1
             print('# of changed_nodes for testing: ', len(changed_nodes))  
             all_nodes = list(G_dynamic[t].nodes())
-            random_nodes = list(np.random.choice(all_nodes, int(len(all_nodes)*0.25), replace=False))   # GR testing nodes
+            np.random.seed(seed = args.seed)
+            random_nodes = list(np.random.choice(all_nodes, int(len(all_nodes)*1.0), replace=False))   # GR testing nodes, 20% of all nodes
             print('# of random_nodes for testing: ', len(random_nodes))                                 
-            # ------------------------- @10 ----------------------
+            # ------------------------- @5 ----------------------
+            precision_at_k = 5
+            #print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            #ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            print(f'Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
+            #print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            #print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR MAP
+            # ------------------------- @10 ---------------------
             precision_at_k = 10
-            print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
-            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            #print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            #ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
             print(f'Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
-            print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
-            print(f'Graph Reconstruction by MAP @{precision_at_k}')
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
-            # ------------------------- @100 ---------------------
-            precision_at_k = 100
-            print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
-            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            #print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            #print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR MAP
+            # ------------------------- @20 ---------------------
+            precision_at_k = 20
+            #print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            #ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
             print(f'Graph Reconstruction by AP @{precision_at_k}')
             ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
-            print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
-            print(f'Graph Reconstruction by MAP @{precision_at_k}')
-            ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR AMP
+            #print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            #print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR MAP
+            # ------------------------- @40 ---------------------
+            precision_at_k = 40
+            #print(f'Changed Graph Reconstruction by AP @{precision_at_k}')
+            #ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=changed_nodes)             # CGR AP
+            print(f'Graph Reconstruction by AP @{precision_at_k}')
+            ds_task.evaluate_precision_k(top_k=precision_at_k, node_list=random_nodes)              # GR AP
+            #print(f'Changed Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=changed_nodes)     # CGR MAP
+            #print(f'Graph Reconstruction by MAP @{precision_at_k}')
+            #ds_task.evaluate_average_precision_k(top_k=precision_at_k, node_list=random_nodes)      # GR MAP
             # NOTE: if memory error, try grClassifier_batch (see dowmstream.py) which is slow but greatly reduce ROM
-
+    
     t2 = time.time()
     print(f'STEP3: end evaluating; time cost: {(t2-t1):.2f}s')
 
@@ -185,3 +211,4 @@ if __name__ == '__main__':
     print(f'------ START @ {time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())} ------')
     main(parse_args())
     print(f'------ END @ {time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())} ------')
+    

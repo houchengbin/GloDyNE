@@ -1,7 +1,7 @@
 """
 downstream tasks: Link Prediction, Graph Reconstraction, Node Classification
 each task is a Python Class
-by Chengbin Hou
+by Chengbin Hou @ 2019
 """
 
 import random
@@ -39,7 +39,7 @@ class lpClassifier(object):
             auc = auc_score(y_true=Y_true, y_score=Y_probs)
         print("auc=", "{:.9f}".format(auc))
 
-def gen_test_edge_wrt_changes(graph_t0, graph_t1):
+def gen_test_edge_wrt_changes(graph_t0, graph_t1, seed=None):
     ''' input: two networkx graphs
         generate **changed** testing edges for link prediction task
         currently, we only consider pos_neg_ratio = 1.0
@@ -66,10 +66,18 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1):
 
     neg_edges_with_label = [list(item+(0,)) for item in edge_del]
     pos_edges_with_label = [list(item+(1,)) for item in edge_add]
+
+    random.seed(seed)
+    all_nodes = list(G0.nodes())
+
     if len(edge_add) > len(edge_del):
         num = len(edge_add) - len(edge_del)
+        start_nodes = np.random.choice(all_nodes, num, replace=True)
         i = 0
-        for non_edge in nx.non_edges(G1):
+        for start_node in start_nodes:
+            non_nbrs = list(nx.non_neighbors(G0, start_node))
+            non_nbr = random.sample(non_nbrs, 1).pop()
+            non_edge = (start_node, non_nbr)
             if non_edge not in edge_del:
                 neg_edges_with_label.append(list(non_edge+(0,)))
                 i += 1
@@ -123,6 +131,79 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
     print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
 """
+
+
+
+
+
+
+# ----------------------------------------------------------------------------------
+# ------------- node classification task based on F1 score -------------------------
+# ----------------------------------------------------------------------------------
+from sklearn.metrics import f1_score
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.multiclass import OneVsRestClassifier
+class ncClassifier(object):
+    def __init__(self, emb_dict, clf):
+        self.embeddings = emb_dict
+        self.clf = TopKRanker(clf)  # here clf is LR
+        self.binarizer = MultiLabelBinarizer(sparse_output=True)
+
+    def split_train_evaluate(self, X, Y, train_precent, seed=None):
+        np.random.seed(seed=seed)
+        state = np.random.get_state()
+        training_size = int(train_precent * len(X))
+        shuffle_indices = np.random.permutation(np.arange(len(X)))
+        X_train = [X[shuffle_indices[i]] for i in range(training_size)]
+        Y_train = [Y[shuffle_indices[i]] for i in range(training_size)]
+        X_test = [X[shuffle_indices[i]] for i in range(training_size, len(X))]
+        Y_test = [Y[shuffle_indices[i]] for i in range(training_size, len(X))]
+        self.train(X_train, Y_train, Y)
+        np.random.set_state(state)
+        return self.evaluate(X_test, Y_test)
+
+    def train(self, X, Y, Y_all):
+        # to support multi-labels, fit means dict mapping {orig cat: binarized vec}
+        self.binarizer.fit(Y_all)
+        X_train = [self.embeddings[x] for x in X]
+        # since we have use Y_all fitted, then we simply transform
+        Y = self.binarizer.transform(Y)
+        self.clf.fit(X_train, Y)
+
+    def predict(self, X, top_k_list):
+        X_ = np.asarray([self.embeddings[x] for x in X])
+        # see TopKRanker(OneVsRestClassifier)
+        # the top k probs to be output...
+        Y = self.clf.predict(X_, top_k_list=top_k_list)
+        return Y
+
+    def evaluate(self, X, Y):
+        # multi-labels, diff len of labels of each node
+        top_k_list = [len(l) for l in Y]
+        Y_ = self.predict(X, top_k_list)  # pred val of X_test i.e. Y_pred
+        Y = self.binarizer.transform(Y)  # true val i.e. Y_test
+        averages = ["micro", "macro", "samples", "weighted"]
+        results = {}
+        for average in averages:
+            results[average] = f1_score(Y, Y_, average=average)
+        print(results)
+        return results
+
+class TopKRanker(OneVsRestClassifier):  # orignal LR or SVM is for binary clf
+    def predict(self, X, top_k_list):  # re-define predict func of OneVsRestClassifier
+        probs = np.asarray(super(TopKRanker, self).predict_proba(X))
+        all_labels = []
+        for i, k in enumerate(top_k_list):
+            probs_ = probs[i, :]
+            labels = self.classes_[
+                probs_.argsort()[-k:]].tolist()  # denote labels
+            probs_[:] = 0  # reset probs_ to all 0
+            probs_[labels] = 1  # reset probs_ to 1 if labels denoted...
+            all_labels.append(probs_)
+        return np.asarray(all_labels)
+
+
+
 
 
 
@@ -191,6 +272,38 @@ class grClassifier(object):
                     pk_list.append(average_precision_score(new_adj_mat[i], new_score_mat[i], k=top_k)) # average_precision_score only on node_list
         print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
 
+def node_id2idx(graph, node_id):
+    G = graph
+    all_nodes = list(G.nodes())
+    node_idx = []
+    for node in node_id:
+        node_idx.append(all_nodes.index(node))
+    return node_idx
+
+def gen_test_node_wrt_changes(graph_t0, graph_t1):
+    ''' reconstruct for nodes with any changes
+    '''
+    from .utils import unique_nodes_from_edge_set
+    G0 = graph_t0.copy() 
+    G1 = graph_t1.copy() # use copy to avoid problem caused by G1.remove_node(node)
+    edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+    edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
+
+    node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add) # unique
+    node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del) # unique
+    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del)) # unique
+
+    unseen_nodes = list( set(G1.nodes()) - set(G0.nodes()) ) # unique
+    test_nodes = [node for node in node_affected if node not in unseen_nodes] # remove unseen nodes
+    print('---- len(test_nodes)', len(test_nodes))
+    return test_nodes
+
+def gen_test_node_wrt_changes_plus_others(graph_t0, graph_t1):
+    ''' currently, we reconstruct whole graph; but todo...
+    '''
+    pass
+
+"""
 # --------------------------------------------------------------------------------------
 # ------------- graph reconstruction task based on precision@k score ==== memory saving, batch version, but slow ====
 # --------------------------------------------------------------------------------------
@@ -255,114 +368,22 @@ class grClassifier_batch(object):
                     truth = adj_mat[i]
                     pk_list.append(average_precision_score(y_true=truth, y_score=score, k=top_k))
         print("average_precision_score=", "{:.9f}".format(np.mean(pk_list)))
-
-def node_id2idx(graph, node_id):
-    G = graph
-    all_nodes = list(G.nodes())
-    node_idx = []
-    for node in node_id:
-        node_idx.append(all_nodes.index(node))
-    return node_idx
-
-def gen_test_node_wrt_changes(graph_t0, graph_t1):
-    ''' reconstruct for nodes with any changes
-    '''
-    from .utils import unique_nodes_from_edge_set
-    G0 = graph_t0.copy() 
-    G1 = graph_t1.copy() # use copy to avoid problem caused by G1.remove_node(node)
-    edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
-    edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
-
-    node_affected_by_edge_add = unique_nodes_from_edge_set(edge_add) # unique
-    node_affected_by_edge_del = unique_nodes_from_edge_set(edge_del) # unique
-    node_affected = list(set(node_affected_by_edge_add + node_affected_by_edge_del)) # unique
-
-    unseen_nodes = list( set(G1.nodes()) - set(G0.nodes()) ) # unique
-    test_nodes = [node for node in node_affected if node not in unseen_nodes] # remove unseen nodes
-    print('---- len(test_nodes)', len(test_nodes))
-    return test_nodes
-
-def gen_test_node_wrt_changes_plus_others(graph_t0, graph_t1):
-    ''' currently, we reconstruct whole graph; but todo...
-    '''
-    pass
+"""
 
 
 
 
+
+
+
+
+"""
 # -----------------------------------------------------------------------------------
 # ------------- top-k retrive task based on similarity score ------------------------
 # -----------------------------------------------------------------------------------
 # todo...
 
 
-# ----------------------------------------------------------------------------------
-# ------------- node classification task based on F1 score -------------------------
-# ----------------------------------------------------------------------------------
-from sklearn.metrics import f1_score
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.multiclass import OneVsRestClassifier
-class ncClassifier(object):
-    def __init__(self, emb_dict, clf):
-        self.embeddings = emb_dict
-        self.clf = TopKRanker(clf)  # here clf is LR
-        self.binarizer = MultiLabelBinarizer(sparse_output=True)
-
-    def split_train_evaluate(self, X, Y, train_precent, seed=0):
-        state = np.random.get_state()
-        training_size = int(train_precent * len(X))
-        shuffle_indices = np.random.permutation(np.arange(len(X)))
-        X_train = [X[shuffle_indices[i]] for i in range(training_size)]
-        Y_train = [Y[shuffle_indices[i]] for i in range(training_size)]
-        X_test = [X[shuffle_indices[i]] for i in range(training_size, len(X))]
-        Y_test = [Y[shuffle_indices[i]] for i in range(training_size, len(X))]
-        self.train(X_train, Y_train, Y)
-        np.random.set_state(state)
-        return self.evaluate(X_test, Y_test)
-
-    def train(self, X, Y, Y_all):
-        # to support multi-labels, fit means dict mapping {orig cat: binarized vec}
-        self.binarizer.fit(Y_all)
-        X_train = [self.embeddings[x] for x in X]
-        # since we have use Y_all fitted, then we simply transform
-        Y = self.binarizer.transform(Y)
-        self.clf.fit(X_train, Y)
-
-    def predict(self, X, top_k_list):
-        X_ = np.asarray([self.embeddings[x] for x in X])
-        # see TopKRanker(OneVsRestClassifier)
-        # the top k probs to be output...
-        Y = self.clf.predict(X_, top_k_list=top_k_list)
-        return Y
-
-    def evaluate(self, X, Y):
-        # multi-labels, diff len of labels of each node
-        top_k_list = [len(l) for l in Y]
-        Y_ = self.predict(X, top_k_list)  # pred val of X_test i.e. Y_pred
-        Y = self.binarizer.transform(Y)  # true val i.e. Y_test
-        averages = ["micro", "macro", "samples", "weighted"]
-        results = {}
-        for average in averages:
-            results[average] = f1_score(Y, Y_, average=average)
-        print(results)
-        return results
-
-class TopKRanker(OneVsRestClassifier):  # orignal LR or SVM is for binary clf
-    def predict(self, X, top_k_list):  # re-define predict func of OneVsRestClassifier
-        probs = np.asarray(super(TopKRanker, self).predict_proba(X))
-        all_labels = []
-        for i, k in enumerate(top_k_list):
-            probs_ = probs[i, :]
-            labels = self.classes_[
-                probs_.argsort()[-k:]].tolist()  # denote labels
-            probs_[:] = 0  # reset probs_ to all 0
-            probs_[labels] = 1  # reset probs_ to 1 if labels denoted...
-            all_labels.append(probs_)
-        return np.asarray(all_labels)
-
-
-
-"""
 # --------------------------------------------------------------------------------
 # ------------------------- 2D/3d visualization task -----------------------------
 # --------------------------------------------------------------------------------
