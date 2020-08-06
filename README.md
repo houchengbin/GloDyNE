@@ -1,26 +1,25 @@
-# GloDyNE (previously called DynWalks)
-Currently, the new improved version is under the peer-review process... <br>
-
-The aim of this work is to propose a **dynamic network embedding** method for **better global topology preserving** of a dynamic network at each time step. Unlike all previous works that mainly consider the most affected regions of a network, the idea of this work, motivated by divide and conquer, is to partition a network into smaller sub-networks such that we can **diversely** consider the topological changes over a network. <br>
+# GloDyNE
+The aim of this work is to propose an efficient **dynamic network embedding** method for **better global topology preservation** of a dynamic network at each time step. Unlike all previous works that mainly consider the most affected regions of a network, the idea of this work, motivated by divide and conquer, is to partition a network into smaller sub-networks such that we can **diversely** consider the topological changes over a network. <br>
 The motivation of this work is that most real-world networks have some **inactivate regions/sub-networks** which would receive accumulated topological changes propagated via the high-order proximity. See the figure below for illustration. Therefore, in order to better preserve the global topology, we also need to consider the accumulated topological changes in the inactivate regions/sub-networks. However, previous works did not consider this issue.
 
 <center>
     <img src="https://github.com/houchengbin/GloDyNE/blob/master/data/Fig1.jpg" width="666"/>
 </center>
 
-Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. Besides, the proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by $5^{th}$ order. b-d) The real-world dynamic networks have some inactive sub-networks (e.g., defined as no change occurs lasting for at least 5 time steps). The x-axis indicates the number of consecutive time steps that no change occurs in a sub-network. The y-axis gives the counts of each case in x-axis. The sub-networks, in average 50 nodes per sub-network, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.
+Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. Besides, the proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by 5 orders. b-d) The real-world dynamic networks have some inactive sub-networks (e.g., defined as no change occurs lasting for at least 5 time steps). The x-axis indicates the number of consecutive time steps that no change occurs in a sub-network. The y-axis gives the counts of each case in x-axis. The sub-networks, in average 50 nodes per sub-network, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.
 
-More details to be CONT'D...
-
-If you find this work is useful, please use the following citation.
+Please refer to [our paper](https://arxiv.org/abs/2008.01935) for further details. If you find this work is useful, please use the following citation.
 ```
-@article{hou2019dynwalks,
-    title={DynWalks: Global Topology and Recent Changes Awareness Dynamic Network Embedding},
-    author={Chengbin Hou and Han Zhang and Ke Tang and Shan He},
-    journal={arXiv preprint arXiv:1907.11968},
-    year={2019}
+@misc{hou2020glodyne,
+    title={GloDyNE: Global Topology Preserving Dynamic Network Embedding},
+    author={Chengbin Hou and Han Zhang and Shan He and Ke Tang},
+    year={2020},
+    eprint={2008.01935},
+    archivePrefix={arXiv},
+    primaryClass={cs.SI}
 }
 ```
+Currently, we are preparing the revision for the second-round review to a journal based on the positive feedback.
 
 ## Requirement
 ```bash
