@@ -8,15 +8,13 @@ The motivation of this work is that most real-world networks have some **inactiv
 
 Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. Besides, the proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by 5 orders. b-d) The real-world dynamic networks have some inactive sub-networks (e.g., defined as no change occurs lasting for at least 5 time steps). The x-axis indicates the number of consecutive time steps that no change occurs in a sub-network. The y-axis gives the counts of each case in x-axis. The sub-networks, in average 50 nodes per sub-network, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.
 
-Please refer to [our paper](https://arxiv.org/abs/2008.01935) for further details. If you find this work is useful, please use the following citation.
+Please refer to our preprint at https://arxiv.org/abs/2008.01935 for further details. If you find this work is useful, please use the following citation.
 ```
-@misc{hou2020glodyne,
+@article{hou2020glodyne,
     title={GloDyNE: Global Topology Preserving Dynamic Network Embedding},
     author={Chengbin Hou and Han Zhang and Shan He and Ke Tang},
-    year={2020},
-    eprint={2008.01935},
-    archivePrefix={arXiv},
-    primaryClass={cs.SI}
+    journal={arXiv preprint arXiv:2008.01935},
+    year={2020}
 }
 ```
 Currently, we are preparing the revision for the second-round review to a journal based on the positive feedback.
@@ -50,13 +48,20 @@ bash bash/ALL_small.sh
 ```
 
 ## Datasets
-Please see the [README.md](https://github.com/houchengbin/DynWalks/tree/master/data) under the **data** folder. <br>
-If you would like to use your own dataset, the input dynamic network can be prepared as follows: <br>
-1) create an empty dynamic network as an empty python list, called DynG; <br>
-2) use Networkx to build the graph based on the edge steams from time step t-k to t, called Gt; <br>
-3) append the current snapshot Gt to the dynamic network DynG; <br>
-4) repeat 2) and 3) as time goes on... <br>
-5) finally, use Pickle to store DynG as a .pkl file
+If you would like to use your own dataset, please see the [README.md](https://github.com/houchengbin/DynWalks/tree/master/data) under the **data** folder.
 
 ## Issues
 We are happy to answer any questions about the code and paper.
+
+## About DynWalks
+If you are more interested in the idea about "freely trade-off between global topology and recent changes", you could check our preprint (for DynWalks method) at https://arxiv.org/abs/1907.11968 <br>
+Since the general framework for DynWalks and GloDyNE is the same, you may either use the above citation for GloDyNE (we recommend this one as it will go through the peer review process), or use the following citation if you think it is more appropriate. 
+```
+@article{hou2019dynwalks,
+    title={DynWalks: Global Topology and Recent Changes Awareness Dynamic Network Embedding},
+    author={Chengbin Hou and Han Zhang and Ke Tang and Shan He},
+    journal={arXiv preprint arXiv:1907.11968},
+    year={2019}
+}
+```
+To reproduce the results in DynWalks, please see v0.1 at https://github.com/houchengbin/GloDyNE/releases/tag/v0.1

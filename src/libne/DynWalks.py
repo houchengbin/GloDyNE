@@ -1,4 +1,4 @@
-'''
+"""
 The proposed methoed: GloDyNE
 ---------------------------------
 limit=0.1                          # limited computational resources i.e. the upper limit # of selected nodes
@@ -9,8 +9,8 @@ seed=2019, workers=32,             # others
 G0                                 # snapshot @t-1
 G1                                 # snapshot @t
 ---------------------------------
-by Chengbin Hou & Han Zhang @ 2019
-'''
+by Chengbin Hou & Han Zhang @ 2020
+"""
 
 import time
 import random
@@ -120,8 +120,7 @@ def node_selecting_scheme(graph_t0, graph_t1, reservoir_dict, limit=0.1, scheme=
           G1: current graph  @ t;
           reservoir_dict: will be always maintained in ROM
           limit: fix the number of node --> the percentage of nodes of a network to be updated (exclude new nodes)
-
-          scheme 1 for greedy, 2 for random, 3 for modularity based, 4 for METIS based
+          scheme 4 for METIS based node selecting approach; scheme 1-3 for other approaches
      '''
      G0 = graph_t0.copy()
      G1 = graph_t1.copy()
@@ -370,10 +369,8 @@ def select_most_affected_nodes(G0, G1, num_limit_return_nodes, reservoir_dict, e
      else:  #NOTE: len(exist_node_affected) <= num_limit_return_nodes
           most_affected_nodes = exist_node_affected
      return most_affected_nodes
-
 # ========= for S3 only =============
 def probabilistic_select_nodes_with_community_awareness(G0, G1, num_limit_return_nodes, reservoir_dict, node_add, comms):
-
      # ---- node_comms = {node: comm_ID, ...} ----
      node_comms = {}   # {node: comm_ID, ...}
      compressed_nodes = list(comms.keys())     # treat as comm_ID
@@ -387,7 +384,6 @@ def probabilistic_select_nodes_with_community_awareness(G0, G1, num_limit_return
           for j in range(len(comm_nodes_ids)):                     # for each nodes in a community
                node_comms[comm_nodes_ids[j]] = compressed_nodes[i] # {node: comm_ID, ...}
      '''
-
      # ---- com_prob = {community: prob, ...} ----
      com_prob = {}   # {community: prob, ...}
      comms_len = [len(comms[k]) for k in compressed_nodes]   # size of each community
@@ -397,7 +393,6 @@ def probabilistic_select_nodes_with_community_awareness(G0, G1, num_limit_return
      sum_log_comms = sum(log_comms)   # denominator for normalization
      for i in range(len(compressed_nodes)):
           com_prob[compressed_nodes[i]] = log_comms[i] / sum_log_comms
-
      # ---- reservoir_dict_score = {node: score, ...} ----
      reservoir_dict_score = {}   # {node: score, ...}
      all_node_sample_pool = list(set(G1.nodes()) - set(node_add))  # node_add has been sampled, so ignore them
@@ -406,7 +401,6 @@ def probabilistic_select_nodes_with_community_awareness(G0, G1, num_limit_return
                reservoir_dict_score[node] = math.pow(2, reservoir_dict[node] / G0.degree[node])   # could be exp
           except:
                reservoir_dict_score[node] = 1 # (2 or e)^0 = 1
-
      # ---- comms_score_sum = {community: score_sum, ...} ----
      comms_score_sum = {}   # {community: score_sum, ...}
      for comm_ID in compressed_nodes:
@@ -425,7 +419,6 @@ def probabilistic_select_nodes_with_community_awareness(G0, G1, num_limit_return
           current_node_prob_within_comm = current_node_score / comms_score_sum[current_node_comm_id] # current_node_prob_within_comm
           current_node_final_prob = current_comm_prob * current_node_prob_within_comm                # current_node_final_prob = current_comm_prob * current_node_prob_within_comm
           prob_all_node_sample_pool.append(current_node_final_prob)
-
      prob_all_node_sample_pool = np.array(prob_all_node_sample_pool) 
      prob_all_node_sample_pool /= prob_all_node_sample_pool.sum()     # re-normalize probability as there might be many round up loss in the process
      select_nodes = list(np.random.choice(all_node_sample_pool, num_limit_return_nodes, replace=True, p=prob_all_node_sample_pool))

@@ -8,16 +8,116 @@ import random
 import numpy as np
 import networkx as nx
 
-
 # ----------------------------------------------------------------------------------
 # ------------------ link prediction task based on AUC score -----------------------
 # ----------------------------------------------------------------------------------
 from .utils import cosine_similarity, auc_score, edge_s1_minus_s0
+from sklearn.linear_model import LogisticRegression
 class lpClassifier(object):
     def __init__(self, emb_dict):
         self.embeddings = emb_dict
 
-    # clf here is simply a similarity/distance metric
+    # clf here is a binary logistic regression <-- np.concatenate((start_node_emb, end_node_emb))
+    def lr_clf_init(self, graph_t0):
+        G0 = graph_t0.copy()
+        pos_edges_with_label = [list(item+(1,)) for item in nx.edges(G0)]
+        neg_edges_with_label = []
+        num = len(pos_edges_with_label)
+        i = 0
+        for non_edge in nx.non_edges(G0):
+            neg_edges_with_label.append(list(non_edge+(0,)))
+            i += 1
+            if i >= num:
+                break
+        all_edges_with_label = pos_edges_with_label + neg_edges_with_label
+        random.seed(2020)
+        random.shuffle(all_edges_with_label)
+        all_test_edge = [e[:2] for e in all_edges_with_label]
+        all_test_label = [e[2] for e in all_edges_with_label]
+        test_size = len(all_test_edge)
+        all_edge_feature = []
+        for i in range(test_size):
+            start_node_emb = np.array(
+                self.embeddings[all_test_edge[i][0]])
+            end_node_emb = np.array(
+                self.embeddings[all_test_edge[i][1]])
+            all_edge_feature.append(np.concatenate((start_node_emb, end_node_emb)))
+        # print(np.shape(all_edge_feature))
+        lr_clf_init = LogisticRegression(random_state=0).fit(all_edge_feature, all_test_label)
+        return lr_clf_init
+
+    def update_LR_auc(self, X_test, Y_test, LR_prev=None):
+        test_size = len(X_test)
+        all_edge_feature = []
+        for i in range(test_size):
+            start_node_emb = np.array(
+                self.embeddings[X_test[i][0]])
+            end_node_emb = np.array(
+                self.embeddings[X_test[i][1]])
+            all_edge_feature.append(np.concatenate((start_node_emb, end_node_emb)))
+            
+        lr_clf = LR_prev
+        if len(Y_test) == 0:
+            print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+            auc = 1.0
+        else:
+            Y_probs = lr_clf.predict_proba(all_edge_feature)[:,1]  # predict; the second col gives prob of true
+            auc = auc_score(y_true=Y_test, y_score=Y_probs)
+            lr_clf.fit(all_edge_feature, Y_test)  # update model parameters
+        print("concat; auc=", "{:.9f}".format(auc))
+        return lr_clf
+    
+    # clf here is a binary logistic regression <-- (start_node_emb-end_node_emb)
+    def lr_clf_init_2(self, graph_t0):
+        G0 = graph_t0.copy()
+        pos_edges_with_label = [list(item+(1,)) for item in nx.edges(G0)]
+        neg_edges_with_label = []
+        num = len(pos_edges_with_label)
+        i = 0
+        for non_edge in nx.non_edges(G0):
+            neg_edges_with_label.append(list(non_edge+(0,)))
+            i += 1
+            if i >= num:
+                break
+        all_edges_with_label = pos_edges_with_label + neg_edges_with_label
+        random.seed(2020)
+        random.shuffle(all_edges_with_label)
+        all_test_edge = [e[:2] for e in all_edges_with_label]
+        all_test_label = [e[2] for e in all_edges_with_label]
+        test_size = len(all_test_edge)
+        all_edge_feature = []
+        for i in range(test_size):
+            start_node_emb = np.array(
+                self.embeddings[all_test_edge[i][0]])
+            end_node_emb = np.array(
+                self.embeddings[all_test_edge[i][1]])
+            all_edge_feature.append(start_node_emb - end_node_emb)
+        # print(np.shape(all_edge_feature))
+        lr_clf_init = LogisticRegression(random_state=0).fit(all_edge_feature, all_test_label)
+        return lr_clf_init
+
+    def update_LR_auc_2(self, X_test, Y_test, LR_prev=None):
+        test_size = len(X_test)
+        all_edge_feature = []
+        for i in range(test_size):
+            start_node_emb = np.array(
+                self.embeddings[X_test[i][0]])
+            end_node_emb = np.array(
+                self.embeddings[X_test[i][1]])
+            all_edge_feature.append(start_node_emb - end_node_emb)
+            
+        lr_clf = LR_prev
+        if len(Y_test) == 0:
+            print('------- NOTE: two graphs do not have any change -> no testing data -> set result to 1......')
+            auc = 1.0
+        else:
+            Y_probs = lr_clf.predict_proba(all_edge_feature)[:,1]  # predict; the second col gives prob of true
+            auc = auc_score(y_true=Y_test, y_score=Y_probs)
+            lr_clf.fit(all_edge_feature, Y_test)  # update model parameters
+        print("abs diff; auc=", "{:.9f}".format(auc))
+        return lr_clf
+
+    # clf here is simply a similarity/distance metric <-- <start_node_emb, end_node_emb>
     def evaluate_auc(self, X_test, Y_test):
         test_size = len(X_test)
         Y_true = [int(i) for i in Y_test]
@@ -37,7 +137,7 @@ class lpClassifier(object):
             auc = 1.0
         else:
             auc = auc_score(y_true=Y_true, y_score=Y_probs)
-        print("auc=", "{:.9f}".format(auc))
+        print("cos sim; auc=", "{:.9f}".format(auc))
 
 def gen_test_edge_wrt_changes(graph_t0, graph_t1, seed=None):
     ''' input: two networkx graphs
@@ -63,7 +163,7 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1, seed=None):
                 edge_add_unseen_node.append(edge)
     edge_add = edge_add - set(edge_add_unseen_node)
     #print('len(edge_add)', len(edge_add))
-
+    
     neg_edges_with_label = [list(item+(0,)) for item in edge_del]
     pos_edges_with_label = [list(item+(1,)) for item in edge_add]
 
@@ -75,9 +175,61 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1, seed=None):
         start_nodes = np.random.choice(all_nodes, num, replace=True)
         i = 0
         for start_node in start_nodes:
-            non_nbrs = list(nx.non_neighbors(G0, start_node))
-            non_nbr = random.sample(non_nbrs, 1).pop()
-            non_edge = (start_node, non_nbr)
+            try:
+                non_nbrs = list(nx.non_neighbors(G0, start_node))
+                non_nbr = random.sample(non_nbrs, 1).pop()
+                non_edge = (start_node, non_nbr)
+                if non_edge not in edge_del:
+                    neg_edges_with_label.append(list(non_edge+(0,)))
+                    i += 1
+                if i >= num:
+                    break
+            except:
+                print('Found a fully connected node: ', start_node, 'Ignore it...')
+    elif len(edge_add) < len(edge_del):
+        num = len(edge_del) - len(edge_add)
+        i = 0
+        for edge in nx.edges(G1):
+            if edge not in edge_add:
+                pos_edges_with_label.append(list(edge+(1,)))
+                i += 1
+            if i >= num:
+                break
+    else: # len(edge_add) == len(edge_del)
+        pass
+    print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
+    return pos_edges_with_label, neg_edges_with_label
+
+"""
+def gen_test_edge_wrt_changes(graph_t0, graph_t1):
+    ''' input: two networkx graphs
+        generate **changed** testing edges for link prediction task
+        currently, we only consider pos_neg_ratio = 1.0
+        return: pos_edges_with_label [(node1, node2, 1), (), ...]
+                neg_edges_with_label [(node3, node4, 0), (), ...]
+    '''
+    G0 = graph_t0.copy() 
+    G1 = graph_t1.copy() # use copy to avoid problem caused by G1.remove_node(node)
+    edge_add = edge_s1_minus_s0(s1=set(G1.edges()), s0=set(G0.edges()))
+    edge_del = edge_s1_minus_s0(s1=set(G0.edges()), s0=set(G1.edges()))
+    unseen_nodes = set(G1.nodes()) - set(G0.nodes())
+    for node in unseen_nodes: # to avoid unseen nodes while testing
+        G1.remove_node(node)
+    
+    edge_add_unseen_node = [] # to avoid unseen nodes while testing
+    #print('len(edge_add)', len(edge_add))
+    for node in unseen_nodes: 
+        for edge in edge_add:
+            if node in edge:
+                edge_add_unseen_node.append(edge)
+    edge_add = edge_add - set(edge_add_unseen_node)
+    #print('len(edge_add)', len(edge_add))
+    pos_edges_with_label = [list(item+(1,)) for item in edge_add]
+    neg_edges_with_label = [list(item+(0,)) for item in edge_del]
+    if len(edge_add) > len(edge_del):
+        num = len(edge_add) - len(edge_del)
+        i = 0
+        for non_edge in nx.non_edges(G1):
             if non_edge not in edge_del:
                 neg_edges_with_label.append(list(non_edge+(0,)))
                 i += 1
@@ -94,9 +246,8 @@ def gen_test_edge_wrt_changes(graph_t0, graph_t1, seed=None):
                 break
     else: # len(edge_add) == len(edge_del)
         pass
-    print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
-    
+"""
 """
 def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
     ''' generate additional the number of (0.1*nodes) of pos_edges and neg_edges respectively for testing
@@ -131,9 +282,6 @@ def gen_test_edge_wrt_changes_plus_others(graph_t0, graph_t1, percentage=1.0):
     print('---- len(pos_edges_with_label), len(neg_edges_with_label)', len(pos_edges_with_label), len(neg_edges_with_label))
     return pos_edges_with_label, neg_edges_with_label
 """
-
-
-
 
 
 
