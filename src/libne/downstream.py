@@ -376,6 +376,8 @@ class grClassifier(object):
         for node in G.nodes():
             emb_mat.append(self.embeddings[node])
         score_mat = pairwise_similarity(emb_mat, type='cosine') # n-by-n corresponding to adj_mat
+        n = len(score_mat)
+        score_mat[range(n), range(n)] = 0.0  # set diagonal to 0 -> do not consider itself as the nearest neighbor (node without self loop)
         return np.array(adj_mat), np.array(score_mat)
 
     def evaluate_precision_k(self, top_k, node_list=None):
