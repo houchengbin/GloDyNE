@@ -1,14 +1,14 @@
 # GloDyNE
 The aim of this work is to propose an efficient **dynamic network embedding** method for **better global topology preservation** of a dynamic network at each time step. Unlike all previous works that mainly consider the most affected regions of a network, the idea of this work, motivated by divide and conquer, is to partition a network into smaller sub-networks such that we can **diversely** consider the topological changes over a network. <br>
-The motivation of this work is that most real-world networks have some **inactivate regions/sub-networks** which would receive accumulated topological changes propagated via the high-order proximity. See the figure below for illustration. Therefore, in order to better preserve the global topology, we also need to consider the accumulated topological changes in the inactivate regions/sub-networks. However, previous works did not consider this issue.
+The motivation of this work is that any changes, i.e., edges being added or deleted, would affect all nodes in a connected network and greatly modify the proximity between nodes over a network via the high-order proximity as illustrated in Figure Fig a-c). On the other hand, as observed in Figure Fig1 d-f), the real-world dynamic networks usually have some inactive sub-networks where no change occurs lasting for several time steps. Putting both together, the existing DNE methods that focus on the most affected nodes (belonging to the active sub-networks) but do not consider the inactive sub-networks, would overlook the accumulated topological changes propagating to the inactive sub-networks via the high-order proximity. However, previous works did not consider this issue.
 
 <center>
-    <img src="https://github.com/houchengbin/GloDyNE/blob/master/data/Fig1.jpg" width="666"/>
+    <img src="https://github.com/houchengbin/GloDyNE/blob/master/data/Fig1.jpg" width="800"/>
 </center>
 
-Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. Besides, the proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by 5 orders. b-d) The real-world dynamic networks have some inactive sub-networks (e.g., defined as no change occurs lasting for at least 5 time steps). The x-axis indicates the number of consecutive time steps that no change occurs in a sub-network. The y-axis gives the counts of each case in x-axis. The sub-networks, in average 50 nodes per sub-network, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.
+Fig. a) A change (new edge in red) affects all nodes in the connected network via high-order proximity. The proximity of nodes 1-6 becomes $1^{st}$ order from $5^{th}$ order, nodes 2-6 becomes $2^{nd}$ order from $4^{th}$ order, etc. The proximity of any node in sub-network 1 to any node in sub-network 2 is reduced by 5 orders. b-c) How to calculate the modifications of the proximity between two snapshots, and the results show the modifications caused by a single edge can be very large in the real-world dynamic networks. d-f) The real-world dynamic networks have some inactive sub-networks, e.g., defined as no change occurs lasting for at least 5 time steps. The sub-networks, each of which has about 50 nodes, are obtained by applying METIS algorithm [Karypis and Kumar 1998] on the largest snapshot of a dynamic network. The details of the three dynamic networks are described in Section 5.1.1.
 
-Please refer to our preprint at https://arxiv.org/abs/2008.01935 for further details. If you find this work is useful, please use the following citation.
+Please refer to our preprint at https://arxiv.org/abs/2008.01935v2 for further details. If you find this work is useful, please use the following citation.
 ```
 @article{hou2020glodyne,
     title={GloDyNE: Global Topology Preserving Dynamic Network Embedding},
@@ -17,7 +17,7 @@ Please refer to our preprint at https://arxiv.org/abs/2008.01935 for further det
     year={2020}
 }
 ```
-Currently, we are preparing the revision for the second-round review to a journal based on the positive feedback.
+Currently, we have submitted our revision for the second-round review to a journal based on the positive feedback.
 
 ## Requirement
 ```bash
