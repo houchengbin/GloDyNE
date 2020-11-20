@@ -15,6 +15,7 @@ Besides, the raw dataset in http://konect.uni-koblenz.de is no longer available.
 
 ## NEW
 The datasets tested in our paper can be downloaded from: <br>
-https://pan.baidu.com/s/1hAjLhHSNUflnQvAu0qSohw <br>
-password: oj5a <br>
+Baidu Drive: https://pan.baidu.com/s/1hAjLhHSNUflnQvAu0qSohw password: oj5a <br>
+or
+Google Drive: https://drive.google.com/drive/folders/14CcDB_aEVA3RjALFUYl69utB7ErViENo?usp=sharing <br>
 Let me know if there is any problem.
