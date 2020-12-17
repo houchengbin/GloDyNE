@@ -1,4 +1,6 @@
 # GloDyNE
+The paper has been accepted by IEEE TKDE with no further changes on 16/Dec/2020.
+
 The aim of this work is to propose an efficient **dynamic network embedding** method for **better global topology preservation** of a dynamic network at each time step. Unlike all previous works that mainly consider the most affected regions of a network, the idea of this work, motivated by divide and conquer, is to partition a network into smaller sub-networks such that we can **diversely** consider the topological changes over a network. <br>
 The motivation of this work is that any changes, i.e., edges being added or deleted, would affect all nodes in a connected network and greatly modify the proximity between nodes over a network via the high-order proximity as illustrated in Figure Fig a-c). On the other hand, as observed in Figure Fig1 d-f), the real-world dynamic networks usually have some inactive sub-networks where no change occurs lasting for several time steps. Putting both together, the existing DNE methods that focus on the most affected nodes (belonging to the active sub-networks) but do not consider the inactive sub-networks, would overlook the accumulated topological changes propagating to the inactive sub-networks via the high-order proximity. However, previous works did not consider this issue.
 
@@ -17,7 +19,6 @@ Please refer to our preprint at https://arxiv.org/abs/2008.01935v2 for further d
     year={2020}
 }
 ```
-Currently, we have submitted our revision for the second-round review to a journal based on the positive feedback.
 
 ## Requirement
 ```bash
