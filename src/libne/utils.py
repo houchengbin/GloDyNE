@@ -80,14 +80,14 @@ def ranking_precision_score(y_true, y_score, k=10):
     # if len(unique_y) > 2:
     #    raise ValueError("Only supported for two relevance levels.")
     # pos_label = unique_y[1] # 1 as true   # zero degree -> index 1 is out of bounds 
-    pos_label = 1  # === a faster & temp solution to fix zero degree node. NOTE: if the performance of GR is very low, use the above lines ====
-    order = np.argsort(y_score)[::-1] # return index
+    pos_label = 1  # === a faster & temp solution to fix zero degree node ====
+    order = np.argsort(y_score)[::-1] # return index with larger scores
     y_pred_true = np.take(y_true, order[:k]) # predict to be true @k
-    n_relevant = np.sum(y_pred_true == pos_label) # predict to be true @k but how many are correct
+    n_relevant = np.sum(y_pred_true == pos_label) # predict to be true @k but how many of them are correct
     # Divide by min(n_pos, k) such that the best achievable score is always 1.0 (note: if k>n_pos, we use fixed n_pos; otherwise use given k)
     n_pos = np.sum(y_true == pos_label)
-    return float(n_relevant) / min(n_pos, k)
     # return float(n_relevant) / k # this is also fair but can not always get 1.0
+    return float(n_relevant) / min(n_pos, k)
 
 def average_precision_score(y_true, y_score, k=10):
     """ Average precision at rank k
@@ -98,12 +98,12 @@ def average_precision_score(y_true, y_score, k=10):
     # if len(unique_y) > 2:
     #    raise ValueError("Only supported for two relevance levels.")
     # pos_label = unique_y[1] # 1 as true  # zero degree -> index 1 is out of bounds
-    pos_label = 1  # === a faster & temp solution to fix zero degree nodes. NOTE: if the performance of GR is very low, use the above lines ====
+    pos_label = 1  # === a faster & temp solution to fix zero degree nodes ====
     n_pos = np.sum(y_true == pos_label)
     order = np.argsort(y_score)[::-1][:min(n_pos, k)] # note: if k>n_pos, we use fixed n_pos; otherwise use given k 
     y_pred_true = np.asarray(y_true)[order]
     score = 0
-    for i in range(len(y_pred_true)): 
+    for i in range(len(y_pred_true)):
         if y_pred_true[i] == pos_label: # if pred_true == ground truth positive label
             # Compute precision up to document i
             # i.e, percentage of relevant documents up to document i.
@@ -113,9 +113,18 @@ def average_precision_score(y_true, y_score, k=10):
                     prec += 1.0
             prec /= (i + 1.0)  # precision @i where i=1,2, ... ; note: i+1.0 since i start from 0
             score += prec
+    """
+    # here we did not follow https://gist.github.com/mblondel/7337391
     if n_pos == 0:
         return 0
-    return score / n_pos # micro-score; if macro-score use np.sum(score)/np.size(score)
+    return score / n_pos
+    """
+    # instead we follow https://ieeexplore.ieee.org/document/8329541
+    n_relevant = np.sum(y_pred_true == pos_label) # num of true positive = num of times of "score += prec" executes!
+    if n_relevant == 0:
+        return 0
+    return score / float(n_relevant)
+    
 
 
 # ----------------------------------------------------------------------------------
@@ -247,7 +256,7 @@ def load_node_label(filename):
     return X, Y
 
 
-
+"""
 # -----------------------------------------------------------------------
 # ------------------------------- others --------------------------------
 # -----------------------------------------------------------------------
@@ -270,8 +279,6 @@ def dim_reduction(mat, dim=128, method='pca'):
     t2 = time.time()
     print('END dimensionality reduction: {:.2f}s'.format(t2-t1))
     return mat_reduced
-
-
 
 # ------------------------------------------------------------------------
 # --------------------------data generator -----------------------------
@@ -344,3 +351,4 @@ def gen_test_edge_wrt_remove(graph, edges_removed, balance_ratio=1.0):
     test_node_pairs = edges_removed + non_edges
     test_edge_labels = list(np.ones(num_edges_removed)) + list(np.zeros(num_non_edges))
     return test_node_pairs, test_edge_labels
+"""
