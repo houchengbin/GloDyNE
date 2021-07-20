@@ -66,3 +66,15 @@ Since the general framework for DynWalks and GloDyNE is the same, you may either
 }
 ```
 To reproduce the results in DynWalks, please see v0.1 at https://github.com/houchengbin/GloDyNE/releases/tag/v0.1
+
+## About ensembles of dynamic network embedding
+We further propose to adopt the idea of **ensembles** to improve the effectiveness and robustness of Skip-Gram based dynamic network embedding method. If you are interested in this idea, please check our work at https://github.com/houchengbin/SG-EDNE or 
+https://arxiv.org/abs/2105.14557 as well as consider the following citation.
+```
+@article{hou2021robust,
+  title={Robust Dynamic Network Embedding via Ensembles},
+  author={Hou, Chengbin and Fu, Guoji and Yang, Peng and He, Shan and Tang, Ke},
+  journal={arXiv preprint arXiv:2105.14557},
+  year={2021}
+}
+```
