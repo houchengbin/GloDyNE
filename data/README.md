@@ -13,9 +13,20 @@ Note that, we take out the Largest Connected Component (LCC) of the very first s
 
 Besides, the raw dataset in http://konect.uni-koblenz.de is no longer available. If you would like to access the raw dataset, please refer to https://github.com/kunegis/konect-handbook/issues/2. And if you need the source code for data preprocessing, please Email me.
 
-## NEW
+## NEW (upload datasets and preprocessing source code)
 The datasets tested in our paper can be downloaded from: <br>
 Baidu Drive: https://pan.baidu.com/s/1hAjLhHSNUflnQvAu0qSohw password: oj5a <br>
 or
 Google Drive: https://drive.google.com/drive/folders/14CcDB_aEVA3RjALFUYl69utB7ErViENo?usp=sharing <br>
-Let me know if there is any problem.
+It includes the original datasets (.zip), the preprocessing source code (.zip), and the well-preprocessed datasets. Let me know if there is any problem.
+
+If you find our work is useful, please use the following citation.
+```
+@article{hou2020glodyne,
+    title={GloDyNE: Global Topology Preserving Dynamic Network Embedding},
+    author={Hou, Chengbin and Zhang, Han and He, Shan and Tang, Ke},
+    journal={IEEE Transactions on Knowledge and Data Engineering},
+    year={2020},
+    doi={10.1109/TKDE.2020.3046511}
+}
+```
